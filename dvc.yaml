@@ -1,0 +1,9 @@
+stages:
+  extract:
+    cmd: python scripts/extract_corpus.py --pdf data/raw/egyptian_civil_code.pdf --out data/processed/corpus.json
+    deps:
+      - data/raw/egyptian_civil_code.pdf
+      - src/legal_rag/extraction/pdf_reader.py
+      - scripts/extract_corpus.py
+    outs:
+      - data/processed/corpus.json

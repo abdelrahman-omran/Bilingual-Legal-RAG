@@ -6,7 +6,7 @@ from pathlib import Path
 import pdfplumber
 import pyarabic.araby as araby
 
-AR_DIGITS = "٠١٢٣٤٥٦٧٨٩۰۱۲۳۴۵۶ˆ"
+AR_DIGITS = "٠١٢٣٤٥٦٧٨٩۰۱۲۳۴۵٦٧٨٩"
 AR2EN = str.maketrans(AR_DIGITS, "01234567890123456789")
 RE_AR_LETTER = re.compile(r"[\u0621-\u064A]")
 
