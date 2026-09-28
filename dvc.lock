@@ -14,10 +14,10 @@ stages:
       size: 1013
     - path: src/legal_rag/extraction/pdf_reader.py
       hash: md5
-      md5: ce9a6efb6cb911f5c6aaace1a3ea9c24
-      size: 7171
+      md5: d9657f8ca77ddb274f132e6dd3e98174
+      size: 14964
     outs:
     - path: data/processed/corpus.json
       hash: md5
-      md5: a12e2e8679183e32bd75cbe063564ec6
-      size: 1237491
+      md5: 34f85741b7764d975d814c431305d975
+      size: 1521457
