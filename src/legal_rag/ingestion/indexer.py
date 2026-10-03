@@ -24,14 +24,16 @@ class CorpusIndexer:
     def init_collection(self) -> None:
         """Create or recreate the Qdrant collection."""
         collections = [c.name for c in self.client.get_collections().collections]
-        if self.collection_name not in collections:
-            self.client.create_collection(
-                collection_name=self.collection_name,
-                vectors_config=VectorParams(
-                    size=self.vector_size,
-                    distance=Distance.COSINE,
-                ),
-            )
+        if self.collection_name in collections:
+            self.client.delete_collection(self.collection_name)
+
+        self.client.create_collection(
+            collection_name=self.collection_name,
+            vectors_config=VectorParams(
+                size=self.vector_size,
+                distance=Distance.COSINE,
+            ),
+        )
 
     def load_corpus(self, json_path: Path) -> list[dict[str, Any]]:
         with open(json_path, "r", encoding="utf-8") as f:
@@ -43,7 +45,6 @@ class CorpusIndexer:
 
         points = []
         for art in articles:
-            # Combine Arabic and English text for bilingual semantic embedding
             text_to_embed = f"Article {art['article_number']}\nArabic: {art['text_ar']}\nEnglish: {art['text_en']}"
             vector = self.encoder.encode(text_to_embed).tolist()
 
@@ -61,7 +62,7 @@ class CorpusIndexer:
 
             points.append(
                 PointStruct(
-                    id=art["article_number"],  # Integer ID matching article number
+                    id=art["article_number"],
                     vector=vector,
                     payload=payload,
                 )
@@ -69,13 +70,3 @@ class CorpusIndexer:
 
         self.client.upsert(collection_name=self.collection_name, points=points)
         return len(points)
-
-
-if __name__ == "__main__":
-    indexer = CorpusIndexer()
-    corpus_path = Path("data/processed/corpus.json")
-    if not corpus_path.exists():
-        raise FileNotFoundError(f"{corpus_path} does not exist. Run pdf_reader first.")
-
-    indexed_count = indexer.index_corpus(corpus_path)
-    print(f" Successfully indexed {indexed_count} articles into Qdrant at ./data/qdrant_db")

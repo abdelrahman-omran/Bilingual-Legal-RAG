@@ -7,3 +7,12 @@ stages:
       - scripts/extract_corpus.py
     outs:
       - data/processed/corpus.json
+
+  index:
+    cmd: python scripts/build_index.py --input data/processed/corpus.json --db-path data/qdrant_db
+    deps:
+      - data/processed/corpus.json
+      - src/legal_rag/ingestion/indexer.py
+      - scripts/build_index.py
+    outs:
+      - data/qdrant_db

@@ -14,10 +14,32 @@ stages:
       size: 1013
     - path: src/legal_rag/extraction/pdf_reader.py
       hash: md5
-      md5: d9657f8ca77ddb274f132e6dd3e98174
-      size: 14964
+      md5: ddb7c5302bbf19d900654dc6517ada3f
+      size: 14965
     outs:
     - path: data/processed/corpus.json
       hash: md5
       md5: 34f85741b7764d975d814c431305d975
       size: 1521457
+  index:
+    cmd: python scripts/build_index.py --input data/processed/corpus.json 
+      --db-path data/qdrant_db
+    deps:
+    - path: data/processed/corpus.json
+      hash: md5
+      md5: 34f85741b7764d975d814c431305d975
+      size: 1521457
+    - path: scripts/build_index.py
+      hash: md5
+      md5: 41f4022d2e9171176a55fc5e1e922f8d
+      size: 979
+    - path: src/legal_rag/ingestion/indexer.py
+      hash: md5
+      md5: 9697f131083b26c0844f12a25fd17a0d
+      size: 2531
+    outs:
+    - path: data/qdrant_db
+      hash: md5
+      md5: b7a0e2909dab80608f38e3ceca7de260.dir
+      size: 13898294
+      nfiles: 3
