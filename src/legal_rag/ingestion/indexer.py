@@ -17,7 +17,7 @@ class CorpusIndexer:
         db_path: str = "./data/qdrant_db",
     ):
         self.collection_name = collection_name
-        self.encoder = SentenceTransformer(model_name)
+        self.encoder = SentenceTransformer(model_name, device="cpu")
         self.vector_size = self.encoder.get_sentence_embedding_dimension()
         self.client = QdrantClient(path=db_path)
 

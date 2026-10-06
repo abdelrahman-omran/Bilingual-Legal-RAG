@@ -12,7 +12,7 @@ EXPERIMENT_CONFIGS = [
     {"chunk_size": 512, "overlap": 64, "model": "BAAI/bge-m3"},
     {"chunk_size": 1024, "overlap": 128, "model": "BAAI/bge-m3"},
     {"chunk_size": 512, "overlap": 0, "model": "BAAI/bge-m3"},
-    {"chunk_size": 512, "overlap": 64, "model": "intfloat/multilingual-e5-base"},
+    {"chunk_size": 256, "overlap": 64, "model": "BAAI/bge-m3"},
 ]
 
 def run_retrieval_benchmark(rag_engine: LegalRAGPipeline) -> float:

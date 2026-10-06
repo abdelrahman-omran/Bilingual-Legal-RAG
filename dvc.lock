@@ -6,8 +6,8 @@ stages:
     deps:
     - path: data/raw/egyptian_civil_code.pdf
       hash: md5
-      md5: 5086ef5f16f15d856278db943e58e948
-      size: 2599703
+      md5: 626404d06e93d57aea6557baa80318bf
+      size: 4259994
     - path: scripts/extract_corpus.py
       hash: md5
       md5: f89cba6c083edc03d725269bc349e239
@@ -19,27 +19,27 @@ stages:
     outs:
     - path: data/processed/corpus.json
       hash: md5
-      md5: 34f85741b7764d975d814c431305d975
-      size: 1521457
+      md5: d751713988987e9331980363e24189ce
+      size: 2
   index:
     cmd: python scripts/build_index.py --input data/processed/corpus.json 
       --db-path data/qdrant_db
     deps:
     - path: data/processed/corpus.json
       hash: md5
-      md5: 34f85741b7764d975d814c431305d975
-      size: 1521457
+      md5: d751713988987e9331980363e24189ce
+      size: 2
     - path: scripts/build_index.py
       hash: md5
       md5: 41f4022d2e9171176a55fc5e1e922f8d
       size: 979
     - path: src/legal_rag/ingestion/indexer.py
       hash: md5
-      md5: 9697f131083b26c0844f12a25fd17a0d
-      size: 2531
+      md5: fc54e8105fff69709b33d9fb7d18a3ef
+      size: 2545
     outs:
     - path: data/qdrant_db
       hash: md5
-      md5: b7a0e2909dab80608f38e3ceca7de260.dir
-      size: 13898294
+      md5: 448b3077ca387fdd84a91a9e7b56d4d1.dir
+      size: 12854
       nfiles: 3

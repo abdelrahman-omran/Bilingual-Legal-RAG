@@ -7,34 +7,7 @@ services:
     ports:
       - "8000:8000"
     environment:
-      - VLLM_BASE_URL=http://vllm:8000/v1
       - LLM_MODEL_NAME=${LLM_MODEL_NAME:-Qwen/Qwen2.5-1.5B-Instruct}
       - HF_HUB_OFFLINE=1
       - TRANSFORMERS_OFFLINE=1
-    depends_on:
-      vllm:
-        condition: service_healthy
     restart: unless-stopped
-
-  vllm:
-    image: vllm/vllm-openai:latest
-    container_name: legal_rag_vllm
-    ports:
-      - "8003:8000"
-    command:
-      - "--model"
-      - "${LLM_MODEL_NAME:-Qwen/Qwen2.5-1.5B-Instruct}"
-    deploy:
-      resources:
-        reservations:
-          devices:
-            - driver: nvidia
-              count: 1
-              capabilities: [gpu]
-    restart: unless-stopped
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8000/v1/models"]
-      interval: 15s
-      timeout: 5s
-      retries: 5
-      start_period: 20s

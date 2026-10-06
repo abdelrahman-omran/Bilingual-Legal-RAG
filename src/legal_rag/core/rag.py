@@ -1,32 +1,34 @@
 import os
 from typing import Any
 
-from openai import OpenAI
 from qdrant_client import QdrantClient
 from sentence_transformers import SentenceTransformer
+from transformers import pipeline
 
 
 class LegalRAGPipeline:
-    """Core RAG pipeline for the Egyptian Civil Code."""
+    """Core RAG pipeline for the Egyptian Civil Code running locally on CPU."""
 
     def __init__(
         self,
         collection_name: str = "egyptian_civil_code",
         embedding_model: str = "BAAI/bge-m3",
         qdrant_path: str = "./data/qdrant_db",
-        vllm_base_url: str = os.getenv( "VLLM_BASE_URL", "http://vllm:8000/v1",),
-        llm_model_name: str = "Qwen/Qwen3-1.7B-Instruct-AWQ",
+        llm_model_name: str = "Qwen/Qwen2.5-1.5B-Instruct",
     ):
         # 1. Retrieval Components
         self.collection_name = collection_name
-        self.encoder = SentenceTransformer(embedding_model)
+        self.encoder = SentenceTransformer(embedding_model, device="cpu")
         self.qdrant_client = QdrantClient(path=qdrant_path)
 
-        # 2. Local vLLM Generator Client
+        # 2. Local CPU Generator via Hugging Face Transformers
         self.llm_model_name = llm_model_name
-        self.llm_client = OpenAI(
-            base_url=vllm_base_url,
-            api_key="none",  # Local vLLM doesn't require an API key
+        print(f"Loading local CPU model ({self.llm_model_name})... This may take a moment.")
+        self.generator = pipeline(
+            "text-generation",
+            model=self.llm_model_name,
+            device="cpu",
+            torch_dtype="auto",
         )
 
     def retrieve(self, query: str, top_k: int = 3) -> list[dict[str, Any]]:
@@ -74,24 +76,33 @@ Answer:"""
         return prompt
 
     def answer(self, query: str, top_k: int = 3) -> dict[str, Any]:
-        """End-to-end RAG execution: Retrieve -> Format -> Generate."""
+        """End-to-end RAG execution: Retrieve -> Format -> Generate on CPU."""
         # Step 1: Retrieval
         contexts = self.retrieve(query, top_k=top_k)
 
         # Step 2: Prompt Engineering
         prompt = self.format_prompt(query, contexts)
 
-        # Step 3: LLM Inference via local vLLM
-        response = self.llm_client.chat.completions.create(
-            model=self.llm_model_name,
-            messages=[
-                {"role": "system", "content": "You are a precise bilingual legal AI assistant."},
-                {"role": "user", "content": prompt},
-            ],
-            temperature=0.1,  # Low temperature for precise legal QA
+        # Step 3: LLM Inference via local CPU pipeline
+        messages = [
+            {"role": "system", "content": "You are a precise bilingual legal AI assistant."},
+            {"role": "user", "content": prompt},
+        ]
+        
+        # Apply chat template if supported, otherwise fallback to raw prompt string
+        formatted_input = self.generator.tokenizer.apply_chat_template(
+            messages, tokenize=False, add_generation_prompt=True
         )
 
-        generated_answer = response.choices[0].message.content
+        outputs = self.generator(
+            formatted_input,
+            max_new_tokens=512,
+            temperature=0.1,
+            do_sample=True,
+            return_full_text=False,
+        )
+
+        generated_answer = outputs[0]["generated_text"].strip()
         sources = [doc["citation"] for doc in contexts]
 
         return {
@@ -103,11 +114,10 @@ Answer:"""
 
 
 if __name__ == "__main__":
-    # Quick sanity check for retrieval part before vLLM server is running
     rag = LegalRAGPipeline()
     sample_query = "ما هي شروط العقد والتزاماته؟"
-    print(f"Testing Query Retrieval: {sample_query}\n")
+    print(f"\nTesting Query Retrieval & CPU Generation: {sample_query}\n")
     
-    retrieved = rag.retrieve(sample_query, top_k=2)
-    for doc in retrieved:
-        print(f"Retrieved: {doc['citation']} | Score: {doc['score']:.4f}")
+    result = rag.answer(sample_query, top_k=2)
+    print("Answer:\n", result["answer"])
+    print("\nSources:", result["sources"])
