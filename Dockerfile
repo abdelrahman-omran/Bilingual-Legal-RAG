@@ -2,11 +2,14 @@ FROM python:3.10-slim
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
-    PYTHONPATH=/app/src \
-    HF_HUB_OFFLINE=1 \
-    TRANSFORMERS_OFFLINE=1
+    PYTHONPATH=/app/src
 
 WORKDIR /app
+
+# Needed by Docker Compose healthcheck
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends curl && \
+    rm -rf /var/lib/apt/lists/*
 
 RUN pip install --no-cache-dir uv
 
@@ -16,7 +19,7 @@ RUN --mount=type=cache,target=/root/.cache/uv \
     uv export --format requirements-txt --no-dev -o requirements.txt && \
     uv pip install --system -r requirements.txt
 
-# Pre-download BAAI/bge-m3 weights into /root/.cache/huggingface
+# Download BGE-M3 into the image
 RUN python -c "from sentence_transformers import SentenceTransformer; SentenceTransformer('BAAI/bge-m3')"
 
 COPY src/ ./src/

@@ -14,8 +14,8 @@ class LegalRAGPipeline:
         collection_name: str = "egyptian_civil_code",
         embedding_model: str = "BAAI/bge-m3",
         qdrant_path: str = "./data/qdrant_db",
-        vllm_base_url: str = "http://localhost:8000/v1",
-        llm_model_name: str = "Qwen/Qwen2.5-7B-Instruct-AWQ",
+        vllm_base_url: str = os.getenv( "VLLM_BASE_URL", "http://vllm:8000/v1",),
+        llm_model_name: str = "Qwen/Qwen3-1.7B-Instruct-AWQ",
     ):
         # 1. Retrieval Components
         self.collection_name = collection_name
