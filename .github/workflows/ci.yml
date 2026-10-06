@@ -1,0 +1,58 @@
+name: Legal RAG CI Pipeline
+
+on:
+  pull_request:
+    branches: [ main, master ]
+  push:
+    branches: [ main, master ]
+
+env:
+  CUDA_VISIBLE_DEVICES: ""  # Forces PyTorch/transformers to run strictly on CPU inside GitHub runner
+
+jobs:
+  ci-pipeline:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install uv
+        run: |
+          curl -LsSf https://astral.sh/uv/install.sh | sh
+          echo "$HOME/.cargo/bin" >> $GITHUB_PATH
+
+      - name: Cache uv & Hugging Face models
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cache/uv
+            ~/.cache/huggingface
+          key: ${{ runner.os }}-uv-${{ hashFiles('uv.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-uv-
+
+      - name: Install local package and dependencies
+        run: |
+          uv pip install --system -e .
+          uv pip install --system ruff pytest dvc
+
+      - name: 1. Lint Code
+        run: ruff check src/ tests/ scripts/
+
+      - name: 2. Run Unit Tests
+        run: pytest tests/ -v
+
+      - name: 3. Rebuild Index (DVC Pipeline)
+        run: dvc repro
+
+      - name: 4. Run Quality Gate Benchmark
+        run: python scripts/evaluate_ci.py
+
+      - name: 5. Build Docker Image
+        run: docker build -t bilingual-legal-rag:latest .
