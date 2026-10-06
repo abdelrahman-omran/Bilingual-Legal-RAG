@@ -1,0 +1,5 @@
+{
+  "chunk_size": 256,
+  "overlap": 32,
+  "model": "BAAI/bge-m3"
+}
