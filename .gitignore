@@ -3,7 +3,7 @@ __pycache__/
 *.py[codz]
 *$py.class
 
-
+data/qdrant_server/
 data/qdrant_db/
 #ignore models
 echo -e "\n# Model artifacts\nmodels/\n*.gguf\n*.bin\n*.safetensors" >> .gitignore
@@ -220,3 +220,4 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+models/

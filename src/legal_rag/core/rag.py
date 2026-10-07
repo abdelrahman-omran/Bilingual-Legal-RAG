@@ -1,3 +1,4 @@
+import os
 from collections.abc import Iterator
 from typing import Any
 
@@ -5,6 +6,15 @@ from qdrant_client import QdrantClient
 from sentence_transformers import SentenceTransformer
 
 from legal_rag.core.llm_backends import LLMBackend, TransformersBackend
+
+
+def _make_qdrant_client(qdrant_path: str) -> QdrantClient:
+    """Server mode when QDRANT_URL is set (no file lock, multi-process safe);
+    local file mode otherwise (single-process, used by tests)."""
+    qdrant_url = os.getenv("QDRANT_URL")
+    if qdrant_url:
+        return QdrantClient(url=qdrant_url)
+    return QdrantClient(path=qdrant_path)
 
 
 class LegalRAGPipeline:
@@ -21,7 +31,7 @@ class LegalRAGPipeline:
         # 1. Retrieval Components
         self.collection_name = collection_name
         self.encoder = SentenceTransformer(embedding_model, device="cpu")
-        self.qdrant_client = QdrantClient(path=qdrant_path)
+        self.qdrant_client = _make_qdrant_client(qdrant_path)
 
         # 2. Generation (pluggable backend; defaults to local transformers)
         self.llm_backend = llm_backend or TransformersBackend(model_name=llm_model_name)
@@ -108,4 +118,3 @@ Answer:"""
             messages, max_tokens=512, temperature=0.1
         ):
             yield {"type": "token", "token": token}
-pipeline = LegalRAGPipeline()

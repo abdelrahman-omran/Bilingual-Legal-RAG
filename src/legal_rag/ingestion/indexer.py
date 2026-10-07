@@ -1,10 +1,19 @@
 import json
+import os
 from pathlib import Path
 from typing import Any
 
 from qdrant_client import QdrantClient
 from qdrant_client.models import Distance, PointStruct, VectorParams
 from sentence_transformers import SentenceTransformer
+
+
+def _make_qdrant_client(db_path: str) -> QdrantClient:
+    """Server mode when QDRANT_URL is set; local file mode otherwise."""
+    qdrant_url = os.getenv("QDRANT_URL")
+    if qdrant_url:
+        return QdrantClient(url=qdrant_url)
+    return QdrantClient(path=db_path)
 
 
 class CorpusIndexer:
@@ -19,7 +28,7 @@ class CorpusIndexer:
         self.collection_name = collection_name
         self.encoder = SentenceTransformer(model_name, device="cpu")
         self.vector_size = self.encoder.get_sentence_embedding_dimension()
-        self.client = QdrantClient(path=db_path)
+        self.client = _make_qdrant_client(db_path)
 
     def init_collection(self) -> None:
         """Create or recreate the Qdrant collection."""
@@ -39,34 +48,32 @@ class CorpusIndexer:
         with open(json_path, "r", encoding="utf-8") as f:
             return json.load(f)
 
+    def _build_point(self, art: dict[str, Any]) -> PointStruct:
+        """Embed one article and build its Qdrant point (id = article_number)."""
+        text_to_embed = f"Article {art['article_number']}\nArabic: {art['text_ar']}\nEnglish: {art['text_en']}"
+        vector = self.encoder.encode(text_to_embed).tolist()
+
+        payload = {
+            "article_number": art["article_number"],
+            "book": art["book"],
+            "chapter": art["chapter"],
+            "section": art["section"],
+            "topic": art["topic"],
+            "text_ar": art["text_ar"],
+            "text_en": art["text_en"],
+            "is_repealed": art["is_repealed"],
+            "citation": art["citation"],
+        }
+
+        return PointStruct(id=art["article_number"], vector=vector, payload=payload)
+
+    def upsert_articles(self, articles: list[dict[str, Any]]) -> int:
+        """Insert or update articles in the existing collection (no rebuild)."""
+        points = [self._build_point(art) for art in articles]
+        self.client.upsert(collection_name=self.collection_name, points=points)
+        return len(points)
+
     def index_corpus(self, json_path: Path) -> int:
         self.init_collection()
         articles = self.load_corpus(json_path)
-
-        points = []
-        for art in articles:
-            text_to_embed = f"Article {art['article_number']}\nArabic: {art['text_ar']}\nEnglish: {art['text_en']}"
-            vector = self.encoder.encode(text_to_embed).tolist()
-
-            payload = {
-                "article_number": art["article_number"],
-                "book": art["book"],
-                "chapter": art["chapter"],
-                "section": art["section"],
-                "topic": art["topic"],
-                "text_ar": art["text_ar"],
-                "text_en": art["text_en"],
-                "is_repealed": art["is_repealed"],
-                "citation": art["citation"],
-            }
-
-            points.append(
-                PointStruct(
-                    id=art["article_number"],
-                    vector=vector,
-                    payload=payload,
-                )
-            )
-
-        self.client.upsert(collection_name=self.collection_name, points=points)
-        return len(points)
+        return self.upsert_articles(articles)
