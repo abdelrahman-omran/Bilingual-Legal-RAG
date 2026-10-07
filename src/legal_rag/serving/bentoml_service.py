@@ -53,6 +53,14 @@ class LegalRAGService:
     """BentoML wrapper: retrieval runs here, LLM generation via backend."""
 
     def __init__(self) -> None:
+        if os.getenv("LLM_BACKEND", "transformers") == "llamacpp":
+            base_url = os.getenv("LLM_BASE_URL", "http://localhost:8080/v1")
+            # fail fast with a clear message instead of silently falling back
+            import urllib.request
+            try:
+                urllib.request.urlopen(base_url.replace("/v1", "/health"), timeout=3)
+            except Exception:
+                raise RuntimeError(f"llama.cpp server not reachable at {base_url} — run `docker compose up -d llm`")
         self.pipeline = LegalRAGPipeline(
             qdrant_path=os.getenv("QDRANT_PATH", _default_qdrant_path()),
             llm_backend=build_backend_from_env(),
