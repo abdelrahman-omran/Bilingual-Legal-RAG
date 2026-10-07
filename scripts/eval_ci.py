@@ -12,17 +12,17 @@ def run_quality_gate():
     """
     print("Starting CI Quality Gate Benchmark (Retrieval Hit@3)...")
 
-    eval_path = Path("data/processed/eval_dataset.json")
+    eval_path = Path("tests/eval/eval_20_questions.json")
     if not eval_path.exists():
-        print(f"Warning: Evaluation dataset {eval_path} not found. Skipping quality gate.")
-        sys.exit(0)
+        print(f"ERROR: Evaluation dataset not found at '{eval_path}'. Quality gate cannot run.")
+        sys.exit(1)  # Fail CI explicitly if test data is missing
 
     with open(eval_path, "r", encoding="utf-8") as f:
         eval_data = json.load(f)
 
     if not eval_data:
-        print("Evaluation dataset is empty. Passing quality gate.")
-        sys.exit(0)
+        print("ERROR: Evaluation dataset is empty.")
+        sys.exit(1)  # Fail CI explicitly if test dataset is empty
 
     pipeline = LegalRAGPipeline()
 
