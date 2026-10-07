@@ -3,6 +3,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI, HTTPException, status
 from pydantic import BaseModel, Field
 
+from legal_rag.core.llm_backends import build_backend_from_env
 from legal_rag.core.rag import LegalRAGPipeline
 
 
@@ -25,9 +26,8 @@ rag_pipeline: LegalRAGPipeline | None = None
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    """Initializes the RAG pipeline when the FastAPI app starts."""
     global rag_pipeline
-    rag_pipeline = LegalRAGPipeline()
+    rag_pipeline = LegalRAGPipeline(llm_backend=build_backend_from_env())
     yield
 
 

@@ -1,13 +1,39 @@
 services:
+  llm:
+    image: ghcr.io/ggml-org/llama.cpp:server
+    container_name: legal_rag_llm
+    command: >
+      -m /models/qwen2.5-1.5b-instruct-q4_k_m.gguf
+      --host 0.0.0.0 --port 8080 -c 4096 -t 4
+    volumes:
+      - ./models:/models:ro
+    ports:
+      - "8080:8080"
+    restart: unless-stopped
+
+  qdrant:
+    image: qdrant/qdrant:latest
+    container_name: legal_rag_qdrant
+    ports:
+      - "6333:6333"
+    volumes:
+      - ./data/qdrant_server:/qdrant/storage
+    restart: unless-stopped
+
   rag-api:
     build:
       context: .
       dockerfile: Dockerfile
     container_name: legal_rag_api
+    depends_on:
+      - llm
+      - qdrant
     ports:
       - "8000:8000"
     environment:
-      - LLM_MODEL_NAME=${LLM_MODEL_NAME:-Qwen/Qwen2.5-1.5B-Instruct}
+      - LLM_BACKEND=llamacpp
+      - LLM_BASE_URL=http://llm:8080/v1
+      - LLM_MODEL_NAME=Qwen/Qwen2.5-1.5B-Instruct
       - HF_HUB_OFFLINE=1
       - TRANSFORMERS_OFFLINE=1
     restart: unless-stopped

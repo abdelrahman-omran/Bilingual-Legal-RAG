@@ -1,0 +1,17 @@
+service: "legal_rag.serving.bentoml_service:LegalRAGService"
+name: legal_rag_service
+labels:
+  project: bilingual-legal-rag
+include:
+  - "src/**"
+  - "data/qdrant_db/**"
+  - "dist/*.whl"
+python:
+  extra_index_url: "https://download.pytorch.org/whl/cpu"
+  packages:
+    - "./dist/bilingual_legal_rag-0.1.0-py3-none-any.whl"
+    - "torch"
+    - "sentence-transformers>=2.5.0"
+    - "qdrant-client>=1.7.0"
+    - "openai>=1.30.0"
+    - "pydantic>=2.0.0"

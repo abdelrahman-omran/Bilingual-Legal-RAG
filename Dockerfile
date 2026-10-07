@@ -3,16 +3,14 @@ FROM python:3.12-slim
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
     PYTHONPATH=/app/src \
-    HF_HOME=/app/.cache/huggingface
+    HF_HOME=/root/.cache/huggingface
 
 WORKDIR /app
 
-# Copy fast uv binary directly from official image
 COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
 
 COPY pyproject.toml uv.lock README.md ./
 
-# Use uv pip install --system with the locked dependencies
 RUN --mount=type=cache,target=/root/.cache/uv \
     uv pip install --system \
     --extra-index-url https://download.pytorch.org/whl/cpu \
@@ -21,10 +19,10 @@ RUN --mount=type=cache,target=/root/.cache/uv \
 
 COPY src/ ./src/
 
-# Pre-download BGE-M3 directly into image layers
-RUN python -c "from sentence_transformers import SentenceTransformer; SentenceTransformer('BAAI/bge-m3')"
+# Cache Hugging Face model between Docker builds
+RUN --mount=type=cache,target=/root/.cache/huggingface \
+    python -c "from sentence_transformers import SentenceTransformer; SentenceTransformer('BAAI/bge-m3')"
 
-# Copy local data directory (gracefully handles fresh clones where qdrant_db is missing)
 COPY data/ ./data/
 
 EXPOSE 8000

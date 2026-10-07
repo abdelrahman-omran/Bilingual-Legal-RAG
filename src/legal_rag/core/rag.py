@@ -1,8 +1,20 @@
+import os
+from collections.abc import Iterator
 from typing import Any
 
 from qdrant_client import QdrantClient
 from sentence_transformers import SentenceTransformer
-from transformers import pipeline
+
+from legal_rag.core.llm_backends import LLMBackend, TransformersBackend
+
+
+def _make_qdrant_client(qdrant_path: str) -> QdrantClient:
+    """Server mode when QDRANT_URL is set (no file lock, multi-process safe);
+    local file mode otherwise (single-process, used by tests)."""
+    qdrant_url = os.getenv("QDRANT_URL")
+    if qdrant_url:
+        return QdrantClient(url=qdrant_url)
+    return QdrantClient(path=qdrant_path)
 
 
 class LegalRAGPipeline:
@@ -14,31 +26,18 @@ class LegalRAGPipeline:
         embedding_model: str = "BAAI/bge-m3",
         qdrant_path: str = "./data/qdrant_db",
         llm_model_name: str = "Qwen/Qwen2.5-1.5B-Instruct",
+        llm_backend: LLMBackend | None = None,
     ):
         # 1. Retrieval Components
         self.collection_name = collection_name
         self.encoder = SentenceTransformer(embedding_model, device="cpu")
-        self.qdrant_client = QdrantClient(path=qdrant_path)
+        self.qdrant_client = _make_qdrant_client(qdrant_path)
 
-        # 2. Lazy LLM initialization
-        self.llm_model_name = llm_model_name
-        self._generator = None
-
-    @property
-    def generator(self):
-        """Lazy loads local CPU LLM pipeline on first use."""
-        if self._generator is None:
-            print(f"Loading local CPU model ({self.llm_model_name})... This may take a moment.")
-            self._generator = pipeline(
-                "text-generation",
-                model=self.llm_model_name,
-                device="cpu",
-                torch_dtype="auto",
-            )
-        return self._generator
+        # 2. Generation (pluggable backend; defaults to local transformers)
+        self.llm_backend = llm_backend or TransformersBackend(model_name=llm_model_name)
 
     def retrieve(self, query: str, top_k: int = 3) -> list[dict[str, Any]]:
-        """Encodes user query and retrieves top_k relevant articles from Qdrant using query_points."""
+        """Encodes user query and retrieves top_k relevant articles from Qdrant."""
         query_vector = self.encoder.encode(query).tolist()
 
         search_result = self.qdrant_client.query_points(
@@ -80,29 +79,21 @@ User Question: {query}
 
 Answer:"""
 
-    def answer(self, query: str, top_k: int = 3) -> dict[str, Any]:
-        """End-to-end RAG execution: Retrieve -> Format -> Generate on CPU."""
-        contexts = self.retrieve(query, top_k=top_k)
+    def _build_messages(self, query: str, contexts: list[dict[str, Any]]) -> list[dict[str, str]]:
         prompt = self.format_prompt(query, contexts)
-
-        messages = [
+        return [
             {"role": "system", "content": "You are a precise bilingual legal AI assistant."},
             {"role": "user", "content": prompt},
         ]
 
-        formatted_input = self.generator.tokenizer.apply_chat_template(
-            messages, tokenize=False, add_generation_prompt=True
-        )
+    def answer(self, query: str, top_k: int = 3) -> dict[str, Any]:
+        """End-to-end RAG execution: Retrieve -> Format -> Generate."""
+        contexts = self.retrieve(query, top_k=top_k)
+        messages = self._build_messages(query, contexts)
 
-        outputs = self.generator(
-            formatted_input,
-            max_new_tokens=512,
-            temperature=0.1,
-            do_sample=True,
-            return_full_text=False,
+        generated_answer = self.llm_backend.generate(
+            messages, max_tokens=512, temperature=0.1
         )
-
-        generated_answer = outputs[0]["generated_text"].strip()
         sources = [doc["citation"] for doc in contexts]
 
         return {
@@ -111,3 +102,20 @@ Answer:"""
             "sources": sources,
             "retrieved_contexts": contexts,
         }
+
+    def answer_stream(self, query: str, top_k: int = 3) -> Iterator[dict[str, Any]]:
+        """Streams the RAG answer.
+
+        Yields:
+            {"type": "sources", "sources": [...]}   once, before generation
+            {"type": "token", "token": "..."}       per generated token
+        """
+        contexts = self.retrieve(query, top_k=top_k)
+        yield {"type": "sources", "sources": [doc["citation"] for doc in contexts]}
+
+        messages = self._build_messages(query, contexts)
+        for token in self.llm_backend.generate_stream(
+            messages, max_tokens=512, temperature=0.1
+        ):
+            yield {"type": "token", "token": token}
+pipeline = LegalRAGPipeline()

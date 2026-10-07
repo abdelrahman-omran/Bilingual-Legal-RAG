@@ -26,12 +26,17 @@ dependencies = [
     "mlflow>=2.10.0",
     "ragas>=0.1.0",
     "langfuse>=2.0.0",
+    # LLM serving (OpenAI-compatible client for llama.cpp server)
+    "openai>=1.30.0",
+    "huggingface_hub>=0.24.0",
+    "bentoml>=1.4.39",
 ]
 
 [project.optional-dependencies]
 dev = [
     "pytest>=8.0.0",
     "ruff>=0.16.9",
+    "locust>=2.31.0",
 ]
 
 [tool.hatch.build.targets.wheel]
