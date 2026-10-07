@@ -12,17 +12,16 @@ COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
 
 COPY pyproject.toml uv.lock README.md ./
 
-# Force CPU-only PyTorch index and allow matching compatible versions across PyPI and PyTorch indexes
+# Install CPU dependencies directly using uv sync
+# Passing PyTorch CPU index directly avoids hash mismatches from exported requirement files
 RUN --mount=type=cache,target=/root/.cache/uv \
-    uv export --format requirements-txt --no-dev -o requirements.txt && \
-    uv pip install --system \
+    uv sync --no-dev --system \
     --extra-index-url https://download.pytorch.org/whl/cpu \
-    --index-strategy unsafe-best-match \
-    -r requirements.txt
+    --index-strategy unsafe-best-match
 
 COPY src/ ./src/
 
-# Pre-download BGE-M3 directly into image layers (weights persist in final image)
+# Pre-download BGE-M3 directly into image layers
 RUN python -c "from sentence_transformers import SentenceTransformer; SentenceTransformer('BAAI/bge-m3')"
 
 # Copy local qdrant database
