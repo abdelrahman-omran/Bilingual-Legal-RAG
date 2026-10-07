@@ -1,26 +1,28 @@
-FROM python:3.10-slim
+FROM python:3.12-slim
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
-    PYTHONPATH=/app/src
+    PYTHONPATH=/app/src \
+    HF_HOME=/app/.cache/huggingface
 
 WORKDIR /app
 
-RUN pip install --no-cache-dir uv
+# Copy fast uv binary directly from official image
+COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
 
 COPY pyproject.toml uv.lock README.md ./
 
+# Force CPU-only PyTorch index (slashes size from ~2.5 GB to ~200 MB, fixing disk space error)
 RUN --mount=type=cache,target=/root/.cache/uv \
     uv export --format requirements-txt --no-dev -o requirements.txt && \
-    uv pip install --system -r requirements.txt
-
-# Download BGE-M3 into the image (cached so rebuilds don't re-download)
-RUN --mount=type=cache,target=/root/.cache/huggingface \
-    python -c "from sentence_transformers import SentenceTransformer; SentenceTransformer('BAAI/bge-m3')"
+    uv pip install --system --extra-index-url https://download.pytorch.org/whl/cpu -r requirements.txt
 
 COPY src/ ./src/
 
-# qdrant_db is created by scripts/build_index.py; copy it only if it exists
+# Pre-download BGE-M3 directly into image layers (removed buildkit cache mount so weights persist in final image)
+RUN python -c "from sentence_transformers import SentenceTransformer; SentenceTransformer('BAAI/bge-m3')"
+
+# Copy local qdrant database
 COPY data/qdrant_db/ ./data/qdrant_db/
 
 EXPOSE 8000
