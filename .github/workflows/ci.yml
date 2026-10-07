@@ -52,7 +52,7 @@ jobs:
         run: dvc repro
 
       - name: 4. Run Quality Gate Benchmark
-        run: python scripts/evaluate_ci.py
+        run: python scripts/eval_ci.py
 
       - name: 5. Build Docker Image
         run: docker build -t bilingual-legal-rag:latest .

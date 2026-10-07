@@ -1,6 +1,7 @@
 import json
 import sys
 from pathlib import Path
+
 from legal_rag.core.rag import LegalRAGPipeline
 
 
@@ -13,7 +14,9 @@ def find_eval_dataset() -> Path:
         if path.exists():
             return path
 
-    print(f"Error: Evaluation dataset missing! Searched: {[str(p) for p in candidate_paths]}")
+    print(
+        f"Error: Evaluation dataset missing! Searched: {[str(p) for p in candidate_paths]}"
+    )
     sys.exit(1)
 
 
@@ -67,7 +70,9 @@ def run_quality_gate(min_faithfulness_threshold: float = 0.75) -> None:
     print("=" * 50 + "\n")
 
     if accuracy < min_faithfulness_threshold:
-        print(f"❌ CI FAILED: Score ({accuracy:.2%}) is below threshold ({min_faithfulness_threshold:.2%}).")
+        print(
+            f"❌ CI FAILED: Score ({accuracy:.2%}) is below threshold ({min_faithfulness_threshold:.2%})."
+        )
         sys.exit(1)
 
     print("✅ CI PASSED: Quality gate threshold met.")

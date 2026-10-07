@@ -1,6 +1,5 @@
 from fastapi import FastAPI, HTTPException, status
 from pydantic import BaseModel, field_validator
-from qdrant_client import QdrantClient
 
 from legal_rag.core.rag import LegalRAGPipeline
 
@@ -35,13 +34,15 @@ class HealthResponse(BaseModel):
 async def health_check():
     """Returns API health and the total number of indexed documents."""
     try:
-        collection_info = rag_pipeline.qdrant_client.get_collection(rag_pipeline.collection_name)
+        collection_info = rag_pipeline.qdrant_client.get_collection(
+            rag_pipeline.collection_name
+        )
         doc_count = collection_info.points_count
         return HealthResponse(status="healthy", documents_indexed=doc_count)
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail=f"Database unavailable: {str(e)}"
+            detail=f"Database unavailable: {e!s}",
         )
 
 
@@ -51,13 +52,9 @@ async def ask_question(request: QueryRequest):
     try:
         # Pydantic automatically handles the 422 Unprocessable Entity for empty strings
         result = rag_pipeline.answer(query=request.question, top_k=3)
-        
-        return QueryResponse(
-            answer=result["answer"],
-            sources=result["sources"]
-        )
-    except Exception as e:
+
+        return QueryResponse(answer=result["answer"], sources=result["sources"])
+    except Exception as e:  # noqa: BLE001
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=str(e)
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e)
         )

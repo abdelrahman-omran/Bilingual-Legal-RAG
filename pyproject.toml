@@ -34,3 +34,8 @@ dev = [
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/legal_rag"]
+
+[dependency-groups]
+dev = [
+    "ruff>=0.16.9",
+]

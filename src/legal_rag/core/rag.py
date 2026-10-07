@@ -1,4 +1,3 @@
-import os
 from typing import Any
 
 from qdrant_client import QdrantClient
@@ -23,7 +22,9 @@ class LegalRAGPipeline:
 
         # 2. Local CPU Generator via Hugging Face Transformers
         self.llm_model_name = llm_model_name
-        print(f"Loading local CPU model ({self.llm_model_name})... This may take a moment.")
+        print(
+            f"Loading local CPU model ({self.llm_model_name})... This may take a moment."
+        )
         self.generator = pipeline(
             "text-generation",
             model=self.llm_model_name,
@@ -43,13 +44,15 @@ class LegalRAGPipeline:
 
         retrieved_docs = []
         for hit in search_result.points:
-            retrieved_docs.append({
-                "score": hit.score,
-                "article_number": hit.payload.get("article_number"),
-                "text_ar": hit.payload.get("text_ar"),
-                "text_en": hit.payload.get("text_en"),
-                "citation": hit.payload.get("citation"),
-            })
+            retrieved_docs.append(
+                {
+                    "score": hit.score,
+                    "article_number": hit.payload.get("article_number"),
+                    "text_ar": hit.payload.get("text_ar"),
+                    "text_en": hit.payload.get("text_en"),
+                    "citation": hit.payload.get("citation"),
+                }
+            )
         return retrieved_docs
 
     def format_prompt(self, query: str, contexts: list[dict[str, Any]]) -> str:
@@ -85,10 +88,13 @@ Answer:"""
 
         # Step 3: LLM Inference via local CPU pipeline
         messages = [
-            {"role": "system", "content": "You are a precise bilingual legal AI assistant."},
+            {
+                "role": "system",
+                "content": "You are a precise bilingual legal AI assistant.",
+            },
             {"role": "user", "content": prompt},
         ]
-        
+
         # Apply chat template if supported, otherwise fallback to raw prompt string
         formatted_input = self.generator.tokenizer.apply_chat_template(
             messages, tokenize=False, add_generation_prompt=True
@@ -117,7 +123,7 @@ if __name__ == "__main__":
     rag = LegalRAGPipeline()
     sample_query = "ما هي شروط العقد والتزاماته؟"
     print(f"\nTesting Query Retrieval & CPU Generation: {sample_query}\n")
-    
+
     result = rag.answer(sample_query, top_k=2)
     print("Answer:\n", result["answer"])
     print("\nSources:", result["sources"])

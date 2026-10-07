@@ -1,10 +1,10 @@
-import json
 import re
 from pathlib import Path
+
 import mlflow
 
-from legal_rag.ingestion.indexer import CorpusIndexer
 from legal_rag.core.rag import LegalRAGPipeline
+from legal_rag.ingestion.indexer import CorpusIndexer
 
 mlflow.set_tracking_uri("sqlite:///mlflow.db")
 mlflow.set_experiment("egyptian-legal-rag-chunking")
@@ -18,7 +18,9 @@ EXPERIMENT_CONFIGS = [
 ]
 
 
-def evaluate_llm_faithfulness(rag: LegalRAGPipeline, question: str, answer: str, contexts: list[dict]) -> float:
+def evaluate_llm_faithfulness(
+    rag: LegalRAGPipeline, question: str, answer: str, contexts: list[dict]
+) -> float:
     """Uses the local CPU generator model to judge whether the generated answer is faithful to the retrieved context."""
     context_text = "\n".join([f"- {c['text_ar'] or c['text_en']}" for c in contexts])
 
@@ -39,7 +41,10 @@ Example response format:
 {{"score": 0.85}}"""
 
     messages = [
-        {"role": "system", "content": "You are a strict evaluation judge. Output valid JSON only."},
+        {
+            "role": "system",
+            "content": "You are a strict evaluation judge. Output valid JSON only.",
+        },
         {"role": "user", "content": judge_prompt},
     ]
 
@@ -59,20 +64,21 @@ Example response format:
 
         content = outputs[0]["generated_text"].strip()
 
-        # Extract numeric score from JSON output
+# Extract numeric score from JSON output
         match = re.search(r'"score"\s*:\s*([0-9.]+)', content)
         if match:
             return float(match.group(1))
 
         # Fallback regex search for any float if JSON extraction fails
-        match_float = re.search(r'0\.[0-9]+|1\.0|0', content)
+        match_float = re.search(r"0\.[0-9]+|1\.0|0", content)
         return float(match_float.group(0)) if match_float else 0.5
 
-    except Exception as e:
-        print(f"Warning: Faithfulness evaluation failed for query ({e}). Defaulting to 0.0.")
+    except Exception as e:  # noqa: BLE001
+        print(
+            f"Warning: Faithfulness evaluation failed for query ({e}). Defaulting to 0.0."
+        )
         return 0.0
-
-
+    
 def run_faithfulness_benchmark(rag: LegalRAGPipeline, questions: list[str]) -> float:
     """Executes full RAG generation and evaluates real LLM faithfulness across test questions."""
     scores = []
@@ -125,12 +131,14 @@ def main():
             faithfulness_score = run_faithfulness_benchmark(rag, eval_questions)
 
             # 4. Log parameters & metric to MLflow
-            mlflow.log_params({
-                "chunk_size": cfg["chunk_size"],
-                "overlap": cfg["overlap"],
-                "embedding_model": cfg["model"],
-                "documents_indexed": indexed_count,
-            })
+            mlflow.log_params(
+                {
+                    "chunk_size": cfg["chunk_size"],
+                    "overlap": cfg["overlap"],
+                    "embedding_model": cfg["model"],
+                    "documents_indexed": indexed_count,
+                }
+            )
             mlflow.log_metric("faithfulness", faithfulness_score)
             print(f"   Score logged: faithfulness = {faithfulness_score}\n")
 
@@ -143,7 +151,9 @@ def main():
 
     # 5. Register best chunking configuration in MLflow Registry
     if best_run_id:
-        print(f"=== Registering Best Run ({best_run_id}) with Faithfulness: {best_score} ===")
+        print(
+            f"=== Registering Best Run ({best_run_id}) with Faithfulness: {best_score} ==="
+        )
         with mlflow.start_run(run_id=best_run_id):
             mlflow.set_tag("registry_status", "best_chunking_config")
             mlflow.log_dict(best_config, "best_config.json")

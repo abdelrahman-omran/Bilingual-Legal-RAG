@@ -21,15 +21,18 @@ def validate_corpus(records: list[dict]) -> None:
         is_repealed = rec.get("is_repealed", False)
 
         # 1. Integer Article Number & Contiguity Check
+        # 1. Integer Article Number & Contiguity Check
         if not isinstance(art_num, int):
-            raise ValueError(f"Record index {idx} has non-integer article_number: {art_num}")
+            raise TypeError(f"Record index {idx} has non-integer article_number: {art_num}")
 
-        if previous_art_num is not None:
-            # Asserts monotonic incrementing (no missing articles or unexpected sequence jumps)
-            if art_num != previous_art_num + 1:
-                raise ValueError(
-                    f"Contiguity gap detected between article {previous_art_num} and {art_num}"
-                )
+        if previous_art_num is not None and art_num != previous_art_num + 1:
+            raise ValueError(
+                f"Contiguity gap detected between article {previous_art_num} and {art_num}"
+            )
+        if previous_art_num is not None and art_num != previous_art_num + 1:
+            raise ValueError(
+                f"Contiguity gap detected between article {previous_art_num} and {art_num}"
+            )
         previous_art_num = art_num
 
         # 2. Non-empty Arabic Text Check
