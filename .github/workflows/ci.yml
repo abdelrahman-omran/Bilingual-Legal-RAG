@@ -39,8 +39,8 @@ jobs:
 
       - name: Install local package and dependencies
         run: |
-          uv pip install --system -e .
-          uv pip install --system ruff pytest dvc
+          uv pip install --system -e ".[dev]"
+          uv pip install --system dvc
 
       - name: 1. Lint Code
         run: ruff check src/ tests/ scripts/
@@ -49,7 +49,9 @@ jobs:
         run: pytest tests/ -v
 
       - name: 3. Rebuild Index (DVC Pipeline)
-        run: dvc repro
+        run: |
+          dvc pull || true  # Attempts to pull data if remote is configured
+          dvc repro
 
       - name: 4. Run Quality Gate Benchmark
         run: python scripts/eval_ci.py

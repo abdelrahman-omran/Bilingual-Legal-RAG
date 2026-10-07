@@ -317,6 +317,7 @@ name = "bilingual-legal-rag"
 version = "0.1.0"
 source = { editable = "." }
 dependencies = [
+    { name = "datasets" },
     { name = "dvc" },
     { name = "fastapi" },
     { name = "langfuse" },
@@ -328,6 +329,7 @@ dependencies = [
     { name = "qdrant-client" },
     { name = "ragas" },
     { name = "sentence-transformers" },
+    { name = "transformers" },
     { name = "uvicorn" },
 ]
 
@@ -337,13 +339,9 @@ dev = [
     { name = "ruff" },
 ]
 
-[package.dev-dependencies]
-dev = [
-    { name = "ruff" },
-]
-
 [package.metadata]
 requires-dist = [
+    { name = "datasets", specifier = "<3.0.0" },
     { name = "dvc", specifier = ">=3.0.0" },
     { name = "fastapi", specifier = ">=0.109.0" },
     { name = "langfuse", specifier = ">=2.0.0" },
@@ -352,17 +350,15 @@ requires-dist = [
     { name = "pyarabic", specifier = ">=0.6.0" },
     { name = "pyarrow", specifier = "<20.0.0" },
     { name = "pydantic-settings", specifier = ">=2.0.0" },
-    { name = "pytest", marker = "extra == 'dev'" },
+    { name = "pytest", marker = "extra == 'dev'", specifier = ">=8.0.0" },
     { name = "qdrant-client", specifier = ">=1.7.0" },
     { name = "ragas", specifier = ">=0.1.0" },
-    { name = "ruff", marker = "extra == 'dev'" },
+    { name = "ruff", marker = "extra == 'dev'", specifier = ">=0.16.9" },
     { name = "sentence-transformers", specifier = ">=2.5.0" },
+    { name = "transformers", specifier = ">=4.38.0" },
     { name = "uvicorn", specifier = ">=0.27.0" },
 ]
 provides-extras = ["dev"]
-
-[package.metadata.requires-dev]
-dev = [{ name = "ruff", specifier = ">=0.16.9" }]
 
 [[package]]
 name = "billiard"
