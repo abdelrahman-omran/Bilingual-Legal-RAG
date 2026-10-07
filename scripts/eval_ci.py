@@ -6,23 +6,29 @@ from legal_rag.core.rag import LegalRAGPipeline
 
 
 def run_quality_gate():
-    """CI Quality Gate: Evaluates retrieval Hit@3 against ground-truth evaluation data.
-
-    Bypasses LLM generation to ensure fast, deterministic execution in CI.
-    """
+    """CI Quality Gate: Evaluates retrieval Hit@3 against ground-truth evaluation data."""
     print("Starting CI Quality Gate Benchmark (Retrieval Hit@3)...")
 
-    eval_path = Path("data/processed/eval_dataset.json")
+    eval_path = Path("tests/eval/eval_20_questions.json")
     if not eval_path.exists():
-        print(f"Warning: Evaluation dataset {eval_path} not found. Skipping quality gate.")
-        sys.exit(0)
+        print(f"ERROR: Evaluation dataset not found at '{eval_path}'. Quality gate cannot run.")
+        sys.exit(1)
 
     with open(eval_path, "r", encoding="utf-8") as f:
-        eval_data = json.load(f)
+        raw_data = json.load(f)
+
+    # Extract questions list
+    if isinstance(raw_data, dict) and "questions" in raw_data:
+        eval_data = raw_data["questions"]
+    elif isinstance(raw_data, list):
+        eval_data = raw_data
+    else:
+        print("ERROR: Unexpected evaluation dataset format.")
+        sys.exit(1)
 
     if not eval_data:
-        print("Evaluation dataset is empty. Passing quality gate.")
-        sys.exit(0)
+        print("ERROR: Evaluation dataset is empty.")
+        sys.exit(1)
 
     pipeline = LegalRAGPipeline()
 
@@ -30,14 +36,42 @@ def run_quality_gate():
     total = len(eval_data)
 
     for item in eval_data:
-        query = item["question"]
-        expected_article = item.get("expected_article") or item.get("article_number")
+        query = item.get("question")
+        if not query:
+            continue
 
-        # Evaluate retrieval directly (uses bge-m3 embedding model only)
+        # Extract expected articles list safely
+        expected = (
+            item.get("expected_articles")
+            or item.get("expected_article")
+            or item.get("article_number")
+        )
+
+        if isinstance(expected, int):
+            expected_list = [expected]
+        elif isinstance(expected, list):
+            expected_list = expected
+        elif isinstance(expected, str):
+            try:
+                expected_list = [int(expected)]
+            except ValueError:
+                expected_list = []
+        else:
+            expected_list = []
+
+        # Convert expected articles to integers and strings for type-safe comparison
+        expected_set = {int(a) for a in expected_list if str(a).isdigit()} | {
+            str(a) for a in expected_list
+        }
+
+        # Retrieve documents from vector store
         retrieved_docs = pipeline.retrieve(query, top_k=3)
-        retrieved_articles = [doc.get("article_number") for doc in retrieved_docs]
+        retrieved_articles = {
+            doc.get("article_number") for doc in retrieved_docs if doc.get("article_number") is not None
+        }
 
-        if expected_article in retrieved_articles:
+        # Hit if any expected article is present in retrieved results
+        if bool(expected_set & retrieved_articles):
             hits += 1
 
     hit_rate = hits / total if total > 0 else 0.0
