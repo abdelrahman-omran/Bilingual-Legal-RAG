@@ -1,6 +1,7 @@
 """Unit tests for corpus validation bounds and assertions."""
 
 import pytest
+
 from legal_rag.extraction.validate import MAX_ARTICLE_LENGTH_CHARS, validate_corpus
 
 

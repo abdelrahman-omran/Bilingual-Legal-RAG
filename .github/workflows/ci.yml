@@ -7,7 +7,7 @@ on:
     branches: [ main, master ]
 
 env:
-  CUDA_VISIBLE_DEVICES: ""  # Forces PyTorch/transformers to run strictly on CPU inside GitHub runner
+  CUDA_VISIBLE_DEVICES: ""  # Forces PyTorch/transformers to run strictly on CPU
 
 jobs:
   ci-pipeline:
@@ -27,20 +27,24 @@ jobs:
           curl -LsSf https://astral.sh/uv/install.sh | sh
           echo "$HOME/.cargo/bin" >> $GITHUB_PATH
 
-      - name: Cache uv & Hugging Face models
+      - name: Cache uv, Hugging Face models, & DVC
         uses: actions/cache@v4
         with:
           path: |
             ~/.cache/uv
             ~/.cache/huggingface
-          key: ${{ runner.os }}-uv-${{ hashFiles('uv.lock') }}
+            .dvc/cache
+          key: ${{ runner.os }}-ci-${{ hashFiles('uv.lock', 'dvc.lock') }}
           restore-keys: |
-            ${{ runner.os }}-uv-
+            ${{ runner.os }}-ci-
 
       - name: Install local package and dependencies
         run: |
-          uv pip install --system -e .
-          uv pip install --system ruff pytest dvc
+          uv pip install --system \
+            --extra-index-url https://download.pytorch.org/whl/cpu \
+            --index-strategy unsafe-best-match \
+            -e ".[dev]"
+          uv pip install --system dvc
 
       - name: 1. Lint Code
         run: ruff check src/ tests/ scripts/
@@ -49,10 +53,18 @@ jobs:
         run: pytest tests/ -v
 
       - name: 3. Rebuild Index (DVC Pipeline)
-        run: dvc repro
+        run: |
+          dvc checkout || true
+          # Only run full repro if data/raw or dvc.yaml was modified in this commit/PR
+          if git diff --name-only HEAD~1 HEAD | grep -E '^(data/raw/|dvc.yaml|params.yaml)'; then
+            echo "Data or pipeline config changed. Running dvc repro..."
+            dvc repro
+          else
+            echo "No pipeline inputs changed. Skipping dvc repro."
+          fi
 
       - name: 4. Run Quality Gate Benchmark
-        run: python scripts/evaluate_ci.py
+        run: python scripts/eval_ci.py
 
       - name: 5. Build Docker Image
         run: docker build -t bilingual-legal-rag:latest .

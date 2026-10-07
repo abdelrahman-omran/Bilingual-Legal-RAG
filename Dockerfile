@@ -1,27 +1,31 @@
-FROM python:3.10-slim
+FROM python:3.12-slim
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
-    PYTHONPATH=/app/src
+    PYTHONPATH=/app/src \
+    HF_HOME=/app/.cache/huggingface
 
 WORKDIR /app
 
-RUN pip install --no-cache-dir uv
+# Copy fast uv binary directly from official image
+COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
 
 COPY pyproject.toml uv.lock README.md ./
 
+# Use uv pip install --system with the locked dependencies
 RUN --mount=type=cache,target=/root/.cache/uv \
-    uv export --format requirements-txt --no-dev -o requirements.txt && \
-    uv pip install --system -r requirements.txt
-
-# Download BGE-M3 into the image (cached so rebuilds don't re-download)
-RUN --mount=type=cache,target=/root/.cache/huggingface \
-    python -c "from sentence_transformers import SentenceTransformer; SentenceTransformer('BAAI/bge-m3')"
+    uv pip install --system \
+    --extra-index-url https://download.pytorch.org/whl/cpu \
+    --index-strategy unsafe-best-match \
+    .
 
 COPY src/ ./src/
 
-# qdrant_db is created by scripts/build_index.py; copy it only if it exists
-COPY data/qdrant_db/ ./data/qdrant_db/
+# Pre-download BGE-M3 directly into image layers
+RUN python -c "from sentence_transformers import SentenceTransformer; SentenceTransformer('BAAI/bge-m3')"
+
+# Copy local data directory (gracefully handles fresh clones where qdrant_db is missing)
+COPY data/ ./data/
 
 EXPOSE 8000
 

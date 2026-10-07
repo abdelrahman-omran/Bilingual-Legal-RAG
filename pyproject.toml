@@ -16,7 +16,9 @@ dependencies = [
     # Ingestion & Vector DB
     "qdrant-client>=1.7.0",
     "sentence-transformers>=2.5.0",
-    "pyarrow<20.0.0",  # Fixes PyExtensionType AttributeError in datasets/sentence-transformers
+    "transformers>=4.38.0",
+    "datasets<3.0.0",   # Fixes sentence-transformers IterableDataset ImportError
+    "pyarrow<20.0.0",  # Fixes PyExtensionType AttributeError
     # Serving & API
     "fastapi>=0.109.0",
     "uvicorn>=0.27.0",
@@ -28,8 +30,8 @@ dependencies = [
 
 [project.optional-dependencies]
 dev = [
-    "pytest",
-    "ruff",
+    "pytest>=8.0.0",
+    "ruff>=0.16.9",
 ]
 
 [tool.hatch.build.targets.wheel]
