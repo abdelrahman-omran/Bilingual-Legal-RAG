@@ -118,3 +118,4 @@ Answer:"""
             messages, max_tokens=512, temperature=0.1
         ):
             yield {"type": "token", "token": token}
+pipeline = LegalRAGPipeline()
