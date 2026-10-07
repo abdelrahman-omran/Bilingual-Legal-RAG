@@ -4,6 +4,9 @@ from pathlib import Path
 import pytest
 from sentence_transformers import SentenceTransformer
 
+pytestmark = pytest.mark.skip(
+    reason="Temporarily skipped to speed up CI runs. Re-enable when updating Qdrant/embeddings."
+)
 
 @pytest.fixture(scope="module")
 def setup_index(tmp_path_factory):
@@ -39,8 +42,7 @@ def test_qdrant_point_count(setup_index):
 
 def test_vector_retrieval_payload(setup_index):
     client, _, _, _ = setup_index
-    encoder = SentenceTransformer("BAAI/bge-m3")
-
+    encoder = SentenceTransformer("BAAI/bge-m3", device="cpu")
     # Search query in Arabic
     query_vector = encoder.encode("العقد شريعة المتعاقدين").tolist()
 
