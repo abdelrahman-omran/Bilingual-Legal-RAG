@@ -27,16 +27,17 @@ jobs:
           curl -LsSf https://astral.sh/uv/install.sh | sh
           echo "$HOME/.cargo/bin" >> $GITHUB_PATH
 
-      - name: Cache uv, Hugging Face models, & DVC
+      - name: Cache uv, Hugging Face models, & Qdrant DB
         uses: actions/cache@v4
         with:
           path: |
             ~/.cache/uv
             ~/.cache/huggingface
             .dvc/cache
-          key: ${{ runner.os }}-ci-${{ hashFiles('uv.lock', 'dvc.lock') }}
+            data/qdrant_db
+          key: ${{ runner.os }}-rag-cache-${{ hashFiles('uv.lock', 'dvc.lock', 'pyproject.toml') }}
           restore-keys: |
-            ${{ runner.os }}-ci-
+            ${{ runner.os }}-rag-cache-
 
       - name: Install local package and dependencies
         run: |
@@ -55,10 +56,12 @@ jobs:
       - name: 3. Restore/Rebuild Index (DVC Pipeline)
         run: |
           dvc checkout || true
-          # If data/qdrant_db wasn't restored from DVC cache, reproduce the index stage
-          if [ ! -d "data/qdrant_db" ]; then
-            echo "qdrant_db not found in workspace/cache. Running dvc repro..."
+          # Check if data/qdrant_db is missing or completely empty
+          if [ ! -d "data/qdrant_db" ] || [ -z "$(ls -A data/qdrant_db)" ]; then
+            echo "qdrant_db missing or empty. Building index with dvc repro..."
             dvc repro
+          else
+            echo "qdrant_db successfully restored from cache. Skipping rebuild!"
           fi
 
       - name: 4. Run Quality Gate Benchmark
