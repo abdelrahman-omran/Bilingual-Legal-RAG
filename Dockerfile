@@ -12,48 +12,19 @@ COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
 
 COPY pyproject.toml uv.lock README.md ./
 
-# Install CPU dependencies directly using uv sync
+# Use uv pip install --system with the locked dependencies
 RUN --mount=type=cache,target=/root/.cache/uv \
-    uv sync --no-dev --system \
+    uv pip install --system \
     --extra-index-url https://download.pytorch.org/whl/cpu \
-    --index-strategy unsafe-best-match
+    --index-strategy unsafe-best-match \
+    .
 
 COPY src/ ./src/
 
 # Pre-download BGE-M3 directly into image layers
 RUN python -c "from sentence_transformers import SentenceTransformer; SentenceTransformer('BAAI/bge-m3')"
 
-# Copy data directory (ensures build succeeds even if qdrant_db is created at runtime)
-COPY data/ ./data/
-
-EXPOSE 8000
-
-CMD ["uvicorn", "legal_rag.api.app:app", "--host", "0.0.0.0", "--port", "8000"]FROM python:3.12-slim
-
-ENV PYTHONDONTWRITEBYTECODE=1 \
-    PYTHONUNBUFFERED=1 \
-    PYTHONPATH=/app/src \
-    HF_HOME=/app/.cache/huggingface
-
-WORKDIR /app
-
-# Copy fast uv binary directly from official image
-COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
-
-COPY pyproject.toml uv.lock README.md ./
-
-# Install CPU dependencies directly using uv sync
-RUN --mount=type=cache,target=/root/.cache/uv \
-    uv sync --no-dev --system \
-    --extra-index-url https://download.pytorch.org/whl/cpu \
-    --index-strategy unsafe-best-match
-
-COPY src/ ./src/
-
-# Pre-download BGE-M3 directly into image layers
-RUN python -c "from sentence_transformers import SentenceTransformer; SentenceTransformer('BAAI/bge-m3')"
-
-# Copy data directory (ensures build succeeds even if qdrant_db is created at runtime)
+# Copy local data directory (gracefully handles fresh clones where qdrant_db is missing)
 COPY data/ ./data/
 
 EXPOSE 8000
