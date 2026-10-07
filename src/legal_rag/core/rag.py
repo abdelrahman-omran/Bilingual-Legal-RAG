@@ -20,17 +20,22 @@ class LegalRAGPipeline:
         self.encoder = SentenceTransformer(embedding_model, device="cpu")
         self.qdrant_client = QdrantClient(path=qdrant_path)
 
-        # 2. Local CPU Generator via Hugging Face Transformers
+        # 2. Lazy LLM initialization
         self.llm_model_name = llm_model_name
-        print(
-            f"Loading local CPU model ({self.llm_model_name})... This may take a moment."
-        )
-        self.generator = pipeline(
-            "text-generation",
-            model=self.llm_model_name,
-            device="cpu",
-            torch_dtype="auto",
-        )
+        self._generator = None
+
+    @property
+    def generator(self):
+        """Lazy loads local CPU LLM pipeline on first use."""
+        if self._generator is None:
+            print(f"Loading local CPU model ({self.llm_model_name})... This may take a moment.")
+            self._generator = pipeline(
+                "text-generation",
+                model=self.llm_model_name,
+                device="cpu",
+                torch_dtype="auto",
+            )
+        return self._generator
 
     def retrieve(self, query: str, top_k: int = 3) -> list[dict[str, Any]]:
         """Encodes user query and retrieves top_k relevant articles from Qdrant using query_points."""
@@ -44,15 +49,13 @@ class LegalRAGPipeline:
 
         retrieved_docs = []
         for hit in search_result.points:
-            retrieved_docs.append(
-                {
-                    "score": hit.score,
-                    "article_number": hit.payload.get("article_number"),
-                    "text_ar": hit.payload.get("text_ar"),
-                    "text_en": hit.payload.get("text_en"),
-                    "citation": hit.payload.get("citation"),
-                }
-            )
+            retrieved_docs.append({
+                "score": hit.score,
+                "article_number": hit.payload.get("article_number"),
+                "text_ar": hit.payload.get("text_ar"),
+                "text_en": hit.payload.get("text_en"),
+                "citation": hit.payload.get("citation"),
+            })
         return retrieved_docs
 
     def format_prompt(self, query: str, contexts: list[dict[str, Any]]) -> str:
@@ -65,7 +68,7 @@ class LegalRAGPipeline:
                 f"English: {doc['text_en']}\n\n"
             )
 
-        prompt = f"""You are an expert legal assistant specializing in the Egyptian Civil Code.
+        return f"""You are an expert legal assistant specializing in the Egyptian Civil Code.
 Answer the user's question accurately using ONLY the provided legal contexts below.
 For every claim or statement in your answer, you MUST cite the corresponding article (e.g., Egyptian Civil Code, Article 147).
 If the context does not contain enough information to answer, state clearly that the answer is not found in the provided articles.
@@ -76,26 +79,17 @@ Contexts:
 User Question: {query}
 
 Answer:"""
-        return prompt
 
     def answer(self, query: str, top_k: int = 3) -> dict[str, Any]:
         """End-to-end RAG execution: Retrieve -> Format -> Generate on CPU."""
-        # Step 1: Retrieval
         contexts = self.retrieve(query, top_k=top_k)
-
-        # Step 2: Prompt Engineering
         prompt = self.format_prompt(query, contexts)
 
-        # Step 3: LLM Inference via local CPU pipeline
         messages = [
-            {
-                "role": "system",
-                "content": "You are a precise bilingual legal AI assistant.",
-            },
+            {"role": "system", "content": "You are a precise bilingual legal AI assistant."},
             {"role": "user", "content": prompt},
         ]
 
-        # Apply chat template if supported, otherwise fallback to raw prompt string
         formatted_input = self.generator.tokenizer.apply_chat_template(
             messages, tokenize=False, add_generation_prompt=True
         )
@@ -117,13 +111,3 @@ Answer:"""
             "sources": sources,
             "retrieved_contexts": contexts,
         }
-
-
-if __name__ == "__main__":
-    rag = LegalRAGPipeline()
-    sample_query = "ما هي شروط العقد والتزاماته؟"
-    print(f"\nTesting Query Retrieval & CPU Generation: {sample_query}\n")
-
-    result = rag.answer(sample_query, top_k=2)
-    print("Answer:\n", result["answer"])
-    print("\nSources:", result["sources"])

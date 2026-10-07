@@ -1,28 +1,9 @@
+from contextlib import asynccontextmanager
+
 from fastapi import FastAPI, HTTPException, status
-from pydantic import BaseModel, field_validator
+from pydantic import BaseModel, Field
 
 from legal_rag.core.rag import LegalRAGPipeline
-
-app = FastAPI(title="Bilingual Legal RAG API", version="0.1.0")
-
-# Initialize RAG Pipeline globally
-rag_pipeline = LegalRAGPipeline()
-
-
-class QueryRequest(BaseModel):
-    question: str
-
-    @field_validator("question")
-    @classmethod
-    def question_must_not_be_empty(cls, v: str) -> str:
-        if not v or not v.strip():
-            raise ValueError("Question cannot be empty.")
-        return v
-
-
-class QueryResponse(BaseModel):
-    answer: str
-    sources: list[str]
 
 
 class HealthResponse(BaseModel):
@@ -30,9 +11,42 @@ class HealthResponse(BaseModel):
     documents_indexed: int
 
 
+class QueryRequest(BaseModel):
+    question: str = Field(..., min_length=1, description="Legal query in Arabic or English")
+
+
+class QueryResponse(BaseModel):
+    answer: str
+    sources: list[str]
+
+
+rag_pipeline: LegalRAGPipeline | None = None
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """Initializes the RAG pipeline when the FastAPI app starts."""
+    global rag_pipeline
+    rag_pipeline = LegalRAGPipeline()
+    yield
+
+
+app = FastAPI(
+    title="Bilingual Legal RAG API",
+    description="API for Egyptian Civil Code RAG System",
+    version="0.1.0",
+    lifespan=lifespan,
+)
+
+
 @app.get("/health", response_model=HealthResponse)
 async def health_check():
     """Returns API health and the total number of indexed documents."""
+    if rag_pipeline is None:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Pipeline not initialized",
+        )
     try:
         collection_info = rag_pipeline.qdrant_client.get_collection(
             rag_pipeline.collection_name
@@ -49,10 +63,13 @@ async def health_check():
 @app.post("/ask", response_model=QueryResponse)
 async def ask_question(request: QueryRequest):
     """Answers legal queries using the Egyptian Civil Code corpus."""
+    if rag_pipeline is None:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Pipeline not initialized",
+        )
     try:
-        # Pydantic automatically handles the 422 Unprocessable Entity for empty strings
         result = rag_pipeline.answer(query=request.question, top_k=3)
-
         return QueryResponse(answer=result["answer"], sources=result["sources"])
     except Exception as e:  # noqa: BLE001
         raise HTTPException(

@@ -46,12 +46,15 @@ def run_quality_gate(min_faithfulness_threshold: float = 0.75) -> None:
         retrieved_contexts = response.get("retrieved_contexts", [])
 
         # Extract article numbers from retrieved contexts
+# Call .retrieve() directly to evaluate quality gate hit rate
+        retrieved_contexts = rag_pipeline.retrieve(q_text, top_k=3)
+
+        # Extract article numbers from retrieved contexts
         retrieved_articles = {
             doc["article_number"]
             for doc in retrieved_contexts
             if doc.get("article_number") is not None
         }
-
         # Validate retrieval hit
         hit = len(expected_articles.intersection(retrieved_articles)) > 0
         if hit:
