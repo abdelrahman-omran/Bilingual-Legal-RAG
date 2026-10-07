@@ -40,7 +40,10 @@ jobs:
 
       - name: Install local package and dependencies
         run: |
-          uv pip install --system --extra-index-url https://download.pytorch.org/whl/cpu -e ".[dev]"
+          uv pip install --system \
+            --extra-index-url https://download.pytorch.org/whl/cpu \
+            --index-strategy unsafe-best-match \
+            -e ".[dev]"
           uv pip install --system dvc
 
       - name: 1. Lint Code
