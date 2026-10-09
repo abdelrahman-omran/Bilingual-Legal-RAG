@@ -13,8 +13,12 @@ from langchain_openai import ChatOpenAI
 from ragas import evaluate
 from ragas.embeddings import LangchainEmbeddingsWrapper
 from ragas.llms import LangchainLLMWrapper
-from ragas.metrics import (answer_relevancy, context_precision,
-                           context_recall, faithfulness)
+from ragas.metrics import (
+    answer_relevancy,
+    context_precision,
+    context_recall,
+    faithfulness,
+)
 
 from legal_rag.core.llm_backends import build_backend_from_env
 from legal_rag.core.rag import LegalRAGPipeline
