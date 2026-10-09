@@ -38,6 +38,11 @@ dev = [
     "ruff>=0.16.9",
     "locust>=2.31.0",
 ]
+eval = [
+    "langchain-openai>=0.2",
+    "langchain-huggingface>=0.1",
+    "datasets>=2.0",
+]
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/legal_rag"]

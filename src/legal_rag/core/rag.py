@@ -2,6 +2,9 @@ import os
 from collections.abc import Iterator
 from typing import Any
 
+from langfuse import (
+    observe,  # add to imports
+)
 from qdrant_client import QdrantClient
 from sentence_transformers import SentenceTransformer
 
@@ -11,7 +14,7 @@ from legal_rag.core.llm_backends import LLMBackend, TransformersBackend
 def _make_qdrant_client(qdrant_path: str) -> QdrantClient:
     """Server mode when QDRANT_URL is set (no file lock, multi-process safe);
     local file mode otherwise (single-process, used by tests)."""
-    qdrant_url = os.getenv("QDRANT_URL")
+    qdrant_url = os.getenv("QDRANT_URL", "http://localhost:6333")
     if qdrant_url:
         return QdrantClient(url=qdrant_url)
     return QdrantClient(path=qdrant_path)
@@ -35,7 +38,7 @@ class LegalRAGPipeline:
 
         # 2. Generation (pluggable backend; defaults to local transformers)
         self.llm_backend = llm_backend or TransformersBackend(model_name=llm_model_name)
-
+    @observe(name="retrieve")
     def retrieve(self, query: str, top_k: int = 3) -> list[dict[str, Any]]:
         """Encodes user query and retrieves top_k relevant articles from Qdrant."""
         query_vector = self.encoder.encode(query).tolist()
@@ -71,7 +74,7 @@ class LegalRAGPipeline:
 Answer the user's question accurately using ONLY the provided legal contexts below.
 For every claim or statement in your answer, you MUST cite the corresponding article (e.g., Egyptian Civil Code, Article 147).
 If the context does not contain enough information to answer, state clearly that the answer is not found in the provided articles.
-
+If the question is in English, answer in English. If the question is in Arabic, answer in Arabic.
 Contexts:
 {formatted_context}
 
@@ -85,7 +88,7 @@ Answer:"""
             {"role": "system", "content": "You are a precise bilingual legal AI assistant."},
             {"role": "user", "content": prompt},
         ]
-
+    @observe(name="rag_answer")
     def answer(self, query: str, top_k: int = 3) -> dict[str, Any]:
         """End-to-end RAG execution: Retrieve -> Format -> Generate."""
         contexts = self.retrieve(query, top_k=top_k)

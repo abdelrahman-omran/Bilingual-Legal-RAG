@@ -4,9 +4,13 @@ labels:
   project: bilingual-legal-rag
 include:
   - "src/**"
-  - "data/qdrant_db/**"
-  - "dist/*.whl"
+  - "dist/**"
 python:
+  # uv cannot satisfy qdrant-client's urllib3 pin when the pytorch index is
+  # listed as extra_index_url under its default first-match strategy.
+  # Fix A: build with UV_INDEX_STRATEGY=unsafe-best-match (locking stays on).
+  # Fix B (this line): let pip resolve at install time instead.
+  lock_packages: false
   extra_index_url: "https://download.pytorch.org/whl/cpu"
   packages:
     - "./dist/bilingual_legal_rag-0.1.0-py3-none-any.whl"

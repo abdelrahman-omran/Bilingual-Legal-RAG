@@ -8,10 +8,22 @@ on:
 
 env:
   CUDA_VISIBLE_DEVICES: ""  # Forces PyTorch/transformers to run strictly on CPU
+  QDRANT_URL: "http://localhost:6333" # Forces QdrantClient to use HTTP server in CI
+  # Dummy keys so Langfuse decorators don't block/fail during CI test runs
+  LANGFUSE_PUBLIC_KEY: "pk-lf-ci-dummy"
+  LANGFUSE_SECRET_KEY: "sk-lf-ci-dummy"
+  LANGFUSE_HOST: "http://localhost:3001"
 
 jobs:
   ci-pipeline:
     runs-on: ubuntu-latest
+
+    # Spin up an isolated Qdrant container for the job
+    services:
+      qdrant:
+        image: qdrant/qdrant:latest
+        ports:
+          - 6333:6333
 
     steps:
       - name: Checkout repository
@@ -23,18 +35,17 @@ jobs:
           python-version: "3.12"
 
       - name: Install uv
-        run: |
-          curl -LsSf https://astral.sh/uv/install.sh | sh
-          echo "$HOME/.cargo/bin" >> $GITHUB_PATH
+        uses: astral-sh/setup-uv@v3
+        with:
+          version: "latest"
 
-      - name: Cache uv, Hugging Face models, & Qdrant DB
+      - name: Cache uv & Hugging Face models
         uses: actions/cache@v4
         with:
           path: |
             ~/.cache/uv
             ~/.cache/huggingface
             .dvc/cache
-            data/qdrant_db
           key: ${{ runner.os }}-rag-cache-${{ hashFiles('uv.lock', 'dvc.lock', 'pyproject.toml') }}
           restore-keys: |
             ${{ runner.os }}-rag-cache-
@@ -53,16 +64,12 @@ jobs:
       - name: 2. Run Unit Tests
         run: pytest tests/ -v
 
-      - name: 3. Restore/Rebuild Index (DVC Pipeline)
+      - name: 3. Restore/Rebuild Vector Index
         run: |
           dvc checkout || true
-          # Check if data/qdrant_db is missing or completely empty
-          if [ ! -d "data/qdrant_db" ] || [ -z "$(ls -A data/qdrant_db)" ]; then
-            echo "qdrant_db missing or empty. Building index with dvc repro..."
-            dvc repro
-          else
-            echo "qdrant_db successfully restored from cache. Skipping rebuild!"
-          fi
+          # Run dvc repro to populate the Qdrant service container on port 6333
+          echo "Building index with dvc repro into Qdrant service..."
+          dvc repro
 
       - name: 4. Run Quality Gate Benchmark
         run: python scripts/eval_ci.py
@@ -73,7 +80,6 @@ jobs:
   publish-docker:
     name: Push Docker Image to GHCR
     needs: ci-pipeline
-    # Only run on pushes (merges) to main/master, not on pull requests
     if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master')
     runs-on: ubuntu-latest
     permissions:

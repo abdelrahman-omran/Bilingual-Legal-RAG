@@ -17,10 +17,12 @@ import os
 from collections.abc import Iterator
 from typing import Protocol
 
+from langfuse import observe
+
 
 class LLMBackend(Protocol):
     """Minimal contract: chat-style generation with optional streaming."""
-
+    @observe(name="llm_generate")
     def generate(
         self, messages: list[dict[str, str]], max_tokens: int = 512, temperature: float = 0.1
     ) -> str: ...
@@ -50,7 +52,7 @@ class TransformersBackend:
                 torch_dtype="auto",
             )
         return self._generator
-
+    @observe(name="llm_generate")
     def generate(self, messages, max_tokens=512, temperature=0.1) -> str:
         formatted = self.generator.tokenizer.apply_chat_template(
             messages, tokenize=False, add_generation_prompt=True
@@ -101,7 +103,7 @@ class LlamaServerBackend:
 
         self.client = OpenAI(api_key="not-needed", base_url=base_url)
         self.model = model
-
+    @observe(name="llm_generate")
     def generate(self, messages, max_tokens=512, temperature=0.1) -> str:
         resp = self.client.chat.completions.create(
             model=self.model,
