@@ -1,0 +1,16 @@
+services:
+  rag-stable:
+    image: legal-rag-bento:stable
+    environment: &rag-env
+      - LLM_BACKEND=llamacpp
+      - LLM_BASE_URL=http://llm:8080/v1
+      - QDRANT_URL=http://qdrant:6333
+  rag-canary:
+    image: legal-rag-bento:canary   # the new bento build under evaluation
+    environment: *rag-env
+  gateway:
+    image: nginx:alpine
+    ports:
+      - "8080:80"
+    volumes:
+      - ./deploy/nginx.canary.conf:/etc/nginx/conf.d/default.conf:ro
