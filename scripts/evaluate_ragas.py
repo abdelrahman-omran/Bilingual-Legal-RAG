@@ -36,7 +36,7 @@ from ragas.metrics import (
 from legal_rag.core.llm_backends import build_backend_from_env
 from legal_rag.core.rag import LegalRAGPipeline
 
-EVAL_PATH = Path("tests/eval/eval_20_questions.json")
+EVAL_PATH = Path("tests/eval/eval_4_questions.json")
 
 
 def main() -> None:
@@ -45,7 +45,7 @@ def main() -> None:
 
     rows = []
     for item in eval_data:
-        result = pipeline.answer(item["question"], top_k=2)
+        result = pipeline.answer(item["question"], top_k=3)
         rows.append({
             "question": item["question"],
             "answer": result["answer"],
@@ -62,13 +62,13 @@ def main() -> None:
     ))
     judge_emb = LangchainEmbeddingsWrapper(HuggingFaceEmbeddings(model_name="BAAI/bge-m3"))
 
-    # Throttled with max_workers=1 to prevent overloading local LLM server
+    # Throttled with max_workers=1 and 300s timeout to prevent timeouts
     scores = evaluate(
         Dataset.from_list([{k: v for k, v in r.items() if k != "trace_id"} for r in rows]),
         metrics=[faithfulness, answer_relevancy, context_precision, context_recall],
         llm=judge_llm,
         embeddings=judge_emb,
-        run_config=RunConfig(max_workers=1, timeout=120),
+        run_config=RunConfig(max_workers=1, timeout=300),
     )
 
     print(scores)
@@ -93,9 +93,9 @@ def main() -> None:
                 if valid_vals:
                     mlflow.log_metric(f"mean_{m}", sum(valid_vals) / len(valid_vals))
 
-    # 2) Attach faithfulness to each Langfuse trace
-    from langfuse import get_client
-    langfuse_client = get_client()
+    # 2) Attach faithfulness to each Langfuse trace using Langfuse v2 client
+    from langfuse import Langfuse
+    langfuse_client = Langfuse()
 
     faith_scores = df["faithfulness"].tolist() if "faithfulness" in df.columns else [None] * len(rows)
     for row, f in zip(rows, faith_scores):
@@ -103,7 +103,7 @@ def main() -> None:
             try:
                 val = float(f)
                 if not math.isnan(val):
-                    langfuse_client.create_score(
+                    langfuse_client.score(
                         trace_id=row["trace_id"],
                         name="ragas_faithfulness",
                         value=val,

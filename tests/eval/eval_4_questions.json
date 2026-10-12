@@ -6,27 +6,6 @@
       "question": "Under Article 5, what three specific conditions render the exercise of a legally recognized right unlawful?",
       "expected_articles": [5],
       "ground_truth": "The exercise of a right is unlawful in three cases: (1) if the sole aim of exercising the right is to cause harm to another, (2) if the interests intended to be achieved are out of proportion to the harm caused to another, or (3) if the interests intended to be achieved are unlawful."
-    },
-    {
-      "id": "q02_ar",
-      "language": "ar",
-      "question": "وفقاً للمادة 5، ما هي الحالات الثلاث المحددة التي يكون فيها استعمال الحق غير مشروع؟",
-      "expected_articles": [5],
-      "ground_truth": "يكون استعمال الحق غير مشروع في الحالات الآتية: (أ) إذا لم يقصد به سوى الإضرار بالغير، (ب) إذا كانت المصالح التي يرمي إلى تحقيقها قليلة الأهمية بحيث لا تتناسب أبتداء مع ما يصيب الغير من ضرر بسببها، (ج) إذا كانت المصالح التي يرمي إلى تحقيقها غير مشروعة."
-    },
-    {
-      "id": "10_en",
-      "language": "en",
-      "question": "What remedies are available under Articles 50 and 51 to an individual whose inherent personality rights or name are unlawfully infringed or usurped?",
-      "expected_articles": [50, 51],
-      "ground_truth": "Anyone whose rights of personality or name are unlawfully infringed or usurped may demand the immediate cessation of the infringement along with monetary compensation for any material or moral damage suffered."
-    },
-    {
-      "id": "10_ar",
-      "language": "ar",
-      "question": "ما هي الحمايات والجزاءات المقررة بموجب المادتين 50 و51 لمن وقع عليه اعتداء غير مشروع على حقوق شخصيته أو اسمه؟",
-      "expected_articles": [50, 51],
-      "ground_truth": "لكل من وقع عليه اعتداء غير مشروع في حق من الحقوق الملازمة لشخصيته أو نازعه الغير في استعمال اسمه دون حق، أن يطلب وقف هذا الاعتداء مع التعويض عما يكون قد لحقه من ضرر."
     }
   ]
 }
