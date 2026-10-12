@@ -17,7 +17,7 @@ import os
 from collections.abc import Iterator
 from typing import Protocol
 
-from langfuse import observe
+from langfuse.decorators import observe
 
 
 class LLMBackend(Protocol):

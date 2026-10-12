@@ -2,9 +2,8 @@ import os
 from collections.abc import Iterator
 from typing import Any
 
-from langfuse import (
-    observe,  # add to imports
-)
+from langfuse.decorators import observe, langfuse_context
+
 from qdrant_client import QdrantClient
 from sentence_transformers import SentenceTransformer
 
@@ -98,12 +97,13 @@ Answer:"""
             messages, max_tokens=512, temperature=0.1
         )
         sources = [doc["citation"] for doc in contexts]
-
+        
         return {
             "question": query,
             "answer": generated_answer,
             "sources": sources,
             "retrieved_contexts": contexts,
+            "trace_id": langfuse_context.get_current_trace_id(), 
         }
 
     def answer_stream(self, query: str, top_k: int = 3) -> Iterator[dict[str, Any]]:
