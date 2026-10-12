@@ -32,6 +32,14 @@ def main() -> None:
 
     indexer = CorpusIndexer(model_name=args.model, db_path=args.db_path)
     indexed_count = indexer.index_corpus(corpus_path)
+    
+    # Ensure DVC tracking directory and a keep file exist locally 
+    # (especially when Qdrant runs remotely via HTTP server in CI)
+    db_path = Path(args.db_path)
+    db_path.mkdir(parents=True, exist_ok=True)
+    marker_file = db_path / ".dvc_keep"
+    marker_file.write_text("indexed", encoding="utf-8")
+
     print(
         f"Successfully indexed {indexed_count} articles into Qdrant at {args.db_path}"
     )
