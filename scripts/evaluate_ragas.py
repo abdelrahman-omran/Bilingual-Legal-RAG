@@ -3,14 +3,27 @@ attaches per-question faithfulness to each Langfuse trace."""
 
 import json
 import os
+import math
 from datetime import datetime, timezone
 from pathlib import Path
+
+# --- FIX FOR UPSTREAM RAGAS VERTEXAI IMPORT BUG ---
+import sys
+import types
+try:
+    from langchain_community.chat_models.vertexai import ChatVertexAI
+except ImportError:
+    dummy_mod = types.ModuleType("langchain_community.chat_models.vertexai")
+    dummy_mod.ChatVertexAI = type("ChatVertexAI", (object,), {})
+    sys.modules["langchain_community.chat_models.vertexai"] = dummy_mod
+# --------------------------------------------------
 
 import mlflow
 from datasets import Dataset
 from langchain_huggingface import HuggingFaceEmbeddings
 from langchain_openai import ChatOpenAI
 from ragas import evaluate
+from ragas.run_config import RunConfig
 from ragas.embeddings import LangchainEmbeddingsWrapper
 from ragas.llms import LangchainLLMWrapper
 from ragas.metrics import (
@@ -32,7 +45,7 @@ def main() -> None:
 
     rows = []
     for item in eval_data:
-        result = pipeline.answer(item["question"], top_k=3)
+        result = pipeline.answer(item["question"], top_k=2)
         rows.append({
             "question": item["question"],
             "answer": result["answer"],
@@ -49,31 +62,56 @@ def main() -> None:
     ))
     judge_emb = LangchainEmbeddingsWrapper(HuggingFaceEmbeddings(model_name="BAAI/bge-m3"))
 
+    # Throttled with max_workers=1 to prevent overloading local LLM server
     scores = evaluate(
         Dataset.from_list([{k: v for k, v in r.items() if k != "trace_id"} for r in rows]),
         metrics=[faithfulness, answer_relevancy, context_precision, context_recall],
         llm=judge_llm,
         embeddings=judge_emb,
+        run_config=RunConfig(max_workers=1, timeout=120),
     )
 
-    # 1) MLflow — one run per session; the UI line chart IS the trend
+    print(scores)
+
+    # Convert EvaluationResult to pandas DataFrame for robust metrics access
+    df = scores.to_pandas()
+
+    # 1) MLflow logging
     mlflow.set_experiment("ragas_evaluation")
     with mlflow.start_run(run_name=f"eval-{datetime.now(timezone.utc):%Y%m%d-%H%M}"):
         mlflow.log_param("llm_model", os.getenv("LLM_MODEL_NAME", "Qwen/Qwen2.5-1.5B-Instruct"))
         mlflow.log_param("embedding_model", "BAAI/bge-m3")
         mlflow.log_param("n_questions", len(rows))
         mlflow.log_param("eval_set", EVAL_PATH.name)
+        
         for m in ["faithfulness", "answer_relevancy", "context_precision", "context_recall"]:
-            mlflow.log_metric(f"mean_{m}", float(sum(scores[m]) / len(rows)))
-    print(scores)
+            if m in df.columns:
+                valid_vals = [
+                    float(v) for v in df[m].dropna().tolist()
+                    if not math.isnan(float(v))
+                ]
+                if valid_vals:
+                    mlflow.log_metric(f"mean_{m}", sum(valid_vals) / len(valid_vals))
 
     # 2) Attach faithfulness to each Langfuse trace
-    import langfuse
-    for row, f in zip(rows, scores["faithfulness"]):
-        if row["trace_id"]:
-            langfuse.score(trace_id=row["trace_id"],
-                           name="ragas_faithfulness", value=float(f))
-    langfuse.flush()
+    from langfuse import get_client
+    langfuse_client = get_client()
+
+    faith_scores = df["faithfulness"].tolist() if "faithfulness" in df.columns else [None] * len(rows)
+    for row, f in zip(rows, faith_scores):
+        if row["trace_id"] and f is not None:
+            try:
+                val = float(f)
+                if not math.isnan(val):
+                    langfuse_client.create_score(
+                        trace_id=row["trace_id"],
+                        name="ragas_faithfulness",
+                        value=val,
+                    )
+            except (ValueError, TypeError):
+                pass
+                
+    langfuse_client.flush()
 
 
 if __name__ == "__main__":
