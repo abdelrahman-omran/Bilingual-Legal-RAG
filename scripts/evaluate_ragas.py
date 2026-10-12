@@ -2,16 +2,17 @@
 attaches per-question faithfulness to each Langfuse trace."""
 
 import json
-import os
 import math
-from datetime import datetime, timezone
-from pathlib import Path
+import os
 
 # --- FIX FOR UPSTREAM RAGAS VERTEXAI IMPORT BUG ---
 import sys
 import types
+from datetime import datetime, timezone
+from pathlib import Path
+
 try:
-    from langchain_community.chat_models.vertexai import ChatVertexAI
+    from langchain_community.chat_models.vertexai import ChatVertexAI  # noqa: F401
 except ImportError:
     dummy_mod = types.ModuleType("langchain_community.chat_models.vertexai")
     dummy_mod.ChatVertexAI = type("ChatVertexAI", (object,), {})
@@ -23,7 +24,6 @@ from datasets import Dataset
 from langchain_huggingface import HuggingFaceEmbeddings
 from langchain_openai import ChatOpenAI
 from ragas import evaluate
-from ragas.run_config import RunConfig
 from ragas.embeddings import LangchainEmbeddingsWrapper
 from ragas.llms import LangchainLLMWrapper
 from ragas.metrics import (
@@ -32,6 +32,7 @@ from ragas.metrics import (
     context_recall,
     faithfulness,
 )
+from ragas.run_config import RunConfig
 
 from legal_rag.core.llm_backends import build_backend_from_env
 from legal_rag.core.rag import LegalRAGPipeline

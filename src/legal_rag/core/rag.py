@@ -2,8 +2,7 @@ import os
 from collections.abc import Iterator
 from typing import Any
 
-from langfuse.decorators import observe, langfuse_context
-
+from langfuse.decorators import langfuse_context, observe
 from qdrant_client import QdrantClient
 from sentence_transformers import SentenceTransformer
 
