@@ -49,8 +49,8 @@ jobs:
       - name: Run Unit Tests (Pytest)
         run: pytest tests/ -v
 
-  data-pipeline:
-    name: DVC Pipeline & Vector Indexing
+  pipeline-and-eval:
+    name: DVC Pipeline & Quality Gate Benchmark
     needs: lint-and-test
     runs-on: ubuntu-latest
     services:
@@ -72,7 +72,7 @@ jobs:
         with:
           version: "latest"
 
-      - name: Cache DVC & Vector Index
+      - name: Cache DVC & Hugging Face models
         uses: actions/cache@v4
         with:
           path: |
@@ -80,62 +80,26 @@ jobs:
             ~/.cache/huggingface
             .dvc/cache
             data/processed
-            data/qdrant_db
-          key: ${{ runner.os }}-dvc-index-${{ hashFiles('dvc.lock', 'scripts/build_index.py', 'scripts/extract_corpus.py') }}
+          key: ${{ runner.os }}-pipeline-${{ hashFiles('dvc.lock', 'scripts/build_index.py', 'scripts/extract_corpus.py') }}
           restore-keys: |
-            ${{ runner.os }}-dvc-index-
+            ${{ runner.os }}-pipeline-
 
       - name: Install dependencies
         run: |
           uv pip install --system --extra-index-url https://download.pytorch.org/whl/cpu --index-strategy unsafe-best-match -e ".[eval]"
           uv pip install --system dvc
 
-      - name: Run DVC Reproduction
+      - name: Run DVC Reproduction (Extract & Index)
         run: |
           dvc checkout || true
           dvc repro
-
-  benchmark:
-    name: Quality Gate Benchmark
-    needs: data-pipeline
-    runs-on: ubuntu-latest
-    services:
-      qdrant:
-        image: qdrant/qdrant:latest
-        ports:
-          - 6333:6333
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Set up Python 3.12
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.12"
-
-      - name: Install uv
-        uses: astral-sh/setup-uv@v3
-        with:
-          version: "latest"
-
-      - name: Restore Cached Data & Index
-        uses: actions/cache@v4
-        with:
-          path: |
-            data/processed
-            data/qdrant_db
-          key: ${{ runner.os }}-dvc-index-${{ hashFiles('dvc.lock', 'scripts/build_index.py', 'scripts/extract_corpus.py') }}
-
-      - name: Install dependencies
-        run: |
-          uv pip install --system --extra-index-url https://download.pytorch.org/whl/cpu --index-strategy unsafe-best-match -e ".[eval]"
 
       - name: Run Quality Gate Benchmark
         run: python scripts/eval_ci.py
 
   build-docker:
     name: Build Docker Image
-    needs: [lint-and-test, benchmark]
+    needs: [lint-and-test, pipeline-and-eval]
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
