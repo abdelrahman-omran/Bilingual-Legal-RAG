@@ -41,7 +41,7 @@ jobs:
 
       - name: Install dependencies
         run: |
-          uv pip install --system --extra-index-url https://download.pytorch.org/whl/cpu -e ".[dev]"
+          uv pip install --system --extra-index-url https://download.pytorch.org/whl/cpu --index-strategy unsafe-best-match -e ".[dev]"
 
       - name: Lint Code (Ruff)
         run: ruff check src/ tests/ scripts/
@@ -87,7 +87,7 @@ jobs:
 
       - name: Install dependencies
         run: |
-          uv pip install --system --extra-index-url https://download.pytorch.org/whl/cpu -e ".[eval]"
+          uv pip install --system --extra-index-url https://download.pytorch.org/whl/cpu --index-strategy unsafe-best-match -e ".[eval]"
           uv pip install --system dvc
 
       - name: Run DVC Reproduction
@@ -128,7 +128,7 @@ jobs:
 
       - name: Install dependencies
         run: |
-          uv pip install --system --extra-index-url https://download.pytorch.org/whl/cpu -e ".[eval]"
+          uv pip install --system --extra-index-url https://download.pytorch.org/whl/cpu --index-strategy unsafe-best-match -e ".[eval]"
 
       - name: Run Quality Gate Benchmark
         run: python scripts/eval_ci.py
