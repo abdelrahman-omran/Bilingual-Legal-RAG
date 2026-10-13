@@ -78,6 +78,7 @@ def main() -> None:
     df = scores.to_pandas()
 
     # 1) MLflow logging
+    mlflow.set_tracking_uri("sqlite:///mlflow.db")  
     mlflow.set_experiment("ragas_evaluation")
     with mlflow.start_run(run_name=f"eval-{datetime.now(timezone.utc):%Y%m%d-%H%M}"):
         mlflow.log_param("llm_model", os.getenv("LLM_MODEL_NAME", "Qwen/Qwen2.5-1.5B-Instruct"))

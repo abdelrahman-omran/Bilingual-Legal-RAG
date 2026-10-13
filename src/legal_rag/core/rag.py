@@ -9,6 +9,7 @@ from sentence_transformers import SentenceTransformer
 from legal_rag.core.llm_backends import LLMBackend, TransformersBackend
 
 
+
 def _make_qdrant_client(qdrant_path: str) -> QdrantClient:
     """Server mode when QDRANT_URL is set (no file lock, multi-process safe);
     local file mode otherwise (single-process, used by tests)."""
