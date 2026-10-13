@@ -18,10 +18,7 @@ RUN --mount=type=cache,target=/root/.cache/uv \
     .
 
 COPY src/ ./src/
-
-# Cache Hugging Face model between Docker builds
-RUN --mount=type=cache,target=/root/.cache/huggingface \
-    python -c "from sentence_transformers import SentenceTransformer; SentenceTransformer('BAAI/bge-m3')"
+COPY scripts/ ./scripts/
 
 COPY data/ ./data/
 
