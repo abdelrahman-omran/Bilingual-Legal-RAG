@@ -6,7 +6,6 @@ from langfuse.decorators import langfuse_context, observe
 from qdrant_client import QdrantClient
 from sentence_transformers import SentenceTransformer
 
-from legal_rag.core.llm_backends import LLMBackend, TransformersBackend
 from legal_rag.core.llm_backends import (
     LLMBackend,
     build_backend_from_env,
