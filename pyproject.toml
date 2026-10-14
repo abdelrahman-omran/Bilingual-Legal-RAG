@@ -24,6 +24,7 @@ dependencies = [
     "uvicorn>=0.27.0",
     # Experiment Tracking & Benchmarking
     "mlflow>=2.10.0",
+    "prometheus-client>=0.20",
     "ragas>=0.2.0",      # Bumps to v0.2+ to fix legacy import errors
     "langfuse>=2.60,<3",
     # LLM serving (OpenAI-compatible client for llama.cpp server)

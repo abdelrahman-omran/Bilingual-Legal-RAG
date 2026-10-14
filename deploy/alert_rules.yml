@@ -1,0 +1,12 @@
+groups:
+  - name: rag
+    rules:
+      - alert: FaithfulnessBelowThreshold
+        expr: ragas_faithfulness < 0.80
+        for: 0m
+        annotations:
+          summary: "RAGAS faithfulness {{ $value }} dropped below 0.80"
+
+      - alert: LLMDown
+        expr: up{job="llama"} == 0
+        for: 1m
