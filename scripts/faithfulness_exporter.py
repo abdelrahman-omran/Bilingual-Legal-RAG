@@ -24,7 +24,7 @@ def latest_faithfulness() -> float | None:
             exp.experiment_id, order_by=["start_time DESC"], max_results=1
         )
         return runs[0].data.metrics.get("mean_faithfulness") if runs else None
-    except Exception as e:
+    except Exception as e: # noqa: BLE001
         logger.warning(f"Waiting for MLflow database/experiment: {e}")
         return None
 

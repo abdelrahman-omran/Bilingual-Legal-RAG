@@ -95,14 +95,28 @@ class TransformersBackend:
         thread.join()
 
 
-class LlamaServerBackend:
-    """Generation via an OpenAI-compatible llama.cpp server (llama-server)."""
 
-    def __init__(self, base_url: str = "http://localhost:8080/v1", model: str = "local-llm") -> None:
+class LlamaServerBackend:
+    """Generation through an OpenAI-compatible server:
+    llama.cpp locally or vLLM remotely.
+    """
+
+    def __init__(
+        self,
+        base_url: str = "http://localhost:8080/v1",
+        model: str = "local-llm",
+        api_key: str = "not-needed",
+        default_headers: dict[str, str] | None = None,
+    ) -> None:
         from openai import OpenAI
 
-        self.client = OpenAI(api_key="not-needed", base_url=base_url)
+        self.client = OpenAI(
+            api_key=api_key,
+            base_url=base_url,
+            default_headers=default_headers or {},
+        )
         self.model = model
+
     @observe(name="llm_generate")
     def generate(self, messages, max_tokens=512, temperature=0.1) -> str:
         resp = self.client.chat.completions.create(
@@ -113,7 +127,7 @@ class LlamaServerBackend:
         )
         return (resp.choices[0].message.content or "").strip()
 
-    def generate_stream(self, messages, max_tokens=512, temperature=0.1) -> Iterator[str]:
+    def generate_stream(self, messages, max_tokens=512, temperature=0.1):
         stream = self.client.chat.completions.create(
             model=self.model,
             messages=messages,
@@ -127,15 +141,52 @@ class LlamaServerBackend:
                 yield delta
 
 
-def build_backend_from_env() -> LLMBackend:
-    """Factory: reads LLM_BACKEND / LLM_MODEL_NAME / LLM_BASE_URL."""
+def build_backend_from_env(
+    default_model: str = "Qwen/Qwen2.5-1.5B-Instruct",
+) -> LLMBackend:
+    """Build a generation backend from environment variables."""
+
     backend = os.getenv("LLM_BACKEND", "transformers").strip().lower()
-    model = os.getenv("LLM_MODEL_NAME", "Qwen/Qwen2.5-1.5B-Instruct")
-    if backend == "llamacpp":
-        return LlamaServerBackend(
-            base_url=os.getenv("LLM_BASE_URL", "http://localhost:8080/v1"),
-            model=model,
+    model = os.getenv("LLM_MODEL_NAME", default_model)
+
+    if backend == "transformers":
+        return TransformersBackend(model_name=model)
+
+    if backend in {"llamacpp", "vllm"}:
+        is_vllm = backend == "vllm"
+
+        default_url = (
+            None if is_vllm else "http://localhost:8080/v1"
         )
-    if backend != "transformers":
-        raise ValueError(f"Unknown LLM_BACKEND: {backend!r} (expected 'transformers' or 'llamacpp')")
-    return TransformersBackend(model_name=model)
+        base_url = os.getenv("LLM_BASE_URL", default_url)
+
+        if not base_url:
+            raise ValueError(
+                "LLM_BASE_URL must be set when LLM_BACKEND='vllm'."
+            )
+
+        api_key = os.getenv("LLM_API_KEY", "not-needed")
+
+        if is_vllm and not os.getenv("LLM_API_KEY"):
+            raise ValueError(
+                "LLM_API_KEY must match the --api-key value "
+                "configured in the vLLM server."
+            )
+
+        headers = (
+            {"ngrok-skip-browser-warning": "true"}
+            if is_vllm
+            else {}
+        )
+
+        return LlamaServerBackend(
+            base_url=base_url,
+            model=model,
+            api_key=api_key,
+            default_headers=headers,
+        )
+
+    raise ValueError(
+        f"Unknown LLM_BACKEND: {backend!r} "
+        "(expected 'transformers', 'llamacpp', or 'vllm')"
+    )

@@ -91,8 +91,7 @@ jobs:
 
       - name: Run DVC Reproduction (Extract & Index)
         run: |
-          dvc checkout || true
-          dvc repro
+          dvc repro --force
 
       - name: Run Quality Gate Benchmark
         run: python scripts/eval_ci.py

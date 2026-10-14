@@ -6,8 +6,10 @@ from langfuse.decorators import langfuse_context, observe
 from qdrant_client import QdrantClient
 from sentence_transformers import SentenceTransformer
 
-from legal_rag.core.llm_backends import LLMBackend, TransformersBackend
-
+from legal_rag.core.llm_backends import (
+    LLMBackend,
+    build_backend_from_env,
+)
 
 
 def _make_qdrant_client(qdrant_path: str) -> QdrantClient:
@@ -36,7 +38,12 @@ class LegalRAGPipeline:
         self.qdrant_client = _make_qdrant_client(qdrant_path)
 
         # 2. Generation (pluggable backend; defaults to local transformers)
-        self.llm_backend = llm_backend or TransformersBackend(model_name=llm_model_name)
+        # 2. Generation: select the backend from environment variables
+        self.llm_backend = (
+            llm_backend
+            if llm_backend is not None
+            else build_backend_from_env(default_model=llm_model_name)
+)
     @observe(name="retrieve")
     def retrieve(self, query: str, top_k: int = 3) -> list[dict[str, Any]]:
         """Encodes user query and retrieves top_k relevant articles from Qdrant."""
