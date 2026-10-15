@@ -221,3 +221,9 @@ __marimo__/
 .streamlit/secrets.toml
 models/
 reports/locust_report.html
+
+# MLflow & Experiment Caches
+mlflow.db
+mlruns/
+.mlflow_chunking_qdrant/
+*.lock

@@ -31,15 +31,15 @@ stages:
       size: 1521457
     - path: scripts/build_index.py
       hash: md5
-      md5: f62560a97c67e8e05def6952f80427ba
-      size: 1109
+      md5: 939fe456dfadf62f2dc0834b06e2b673
+      size: 3740
     - path: src/legal_rag/ingestion/indexer.py
       hash: md5
-      md5: 00652ef334c2c2511e33f08cd7c9d176
-      size: 2546
+      md5: 78b9f6bc76258bec0c6f35f4c5571c8b
+      size: 9713
     outs:
     - path: data/qdrant_db
       hash: md5
-      md5: e3f191e745c9da87ac8f2e2af0631386.dir
-      size: 13898294
-      nfiles: 3
+      md5: 90db70ed8b22bf8796e2503ba5a1273b.dir
+      size: 13898301
+      nfiles: 4

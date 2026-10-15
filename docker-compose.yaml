@@ -106,3 +106,4 @@ services:
 volumes:
   langfuse_pg:
   grafana_data:
+  hf_model_cache:

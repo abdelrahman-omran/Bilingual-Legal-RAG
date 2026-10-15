@@ -15,7 +15,7 @@ from legal_rag.core.llm_backends import (
 def _make_qdrant_client(qdrant_path: str) -> QdrantClient:
     """Server mode when QDRANT_URL is set (no file lock, multi-process safe);
     local file mode otherwise (single-process, used by tests)."""
-    qdrant_url = os.getenv("QDRANT_URL", "http://localhost:6333")
+    qdrant_url = os.getenv("QDRANT_URL", "")
     if qdrant_url:
         return QdrantClient(url=qdrant_url)
     return QdrantClient(path=qdrant_path)
