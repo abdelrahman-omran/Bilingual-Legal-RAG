@@ -20,8 +20,11 @@ RUN --mount=type=cache,target=/root/.cache/uv \
 COPY src/ ./src/
 COPY scripts/ ./scripts/
 # Cache Hugging Face model between Docker builds
-RUN --mount=type=cache,target=/root/.cache/huggingface \
-    python -c "from sentence_transformers import SentenceTransformer; SentenceTransformer('BAAI/bge-m3')"
+# Copy the model directly from host into the image layer
+# 1. Create a local cache directory inside your project repo
+
+# Now this will instantly load from local cache without downloading
+RUN python -c "from sentence_transformers import SentenceTransformer; SentenceTransformer('BAAI/bge-m3')"
 COPY data/ ./data/
 
 

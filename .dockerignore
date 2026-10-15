@@ -1,0 +1,15 @@
+.git
+.venv/
+**/__pycache__/
+*.py[cod]
+.pytest_cache/
+.ruff_cache/
+dist/
+build/
+*.egg-info/
+mlruns/
+mlflow.db
+reports/locust_report.html
+models/
+data/qdrant_db/
+data/qdrant_server/

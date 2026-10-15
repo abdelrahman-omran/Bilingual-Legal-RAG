@@ -38,12 +38,16 @@ class LegalRAGPipeline:
         self.qdrant_client = _make_qdrant_client(qdrant_path)
 
         # 2. Generation (pluggable backend; defaults to local transformers)
+
         # 2. Generation: select the backend from environment variables
         self.llm_backend = (
             llm_backend
             if llm_backend is not None
             else build_backend_from_env(default_model=llm_model_name)
-)
+        )
+
+        print(f"Selected LLM backend: {type(self.llm_backend).__name__}")
+
     @observe(name="retrieve")
     def retrieve(self, query: str, top_k: int = 3) -> list[dict[str, Any]]:
         """Encodes user query and retrieves top_k relevant articles from Qdrant."""
