@@ -1,0 +1,7 @@
+{
+  "chunk_size": 256,
+  "overlap": 32,
+  "embedding_model": "BAAI/bge-m3",
+  "faithfulness": 1.0,
+  "run_id": "985848824676435eada2889f33b67249"
+}

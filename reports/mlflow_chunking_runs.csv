@@ -1,0 +1,6 @@
+chunk_size,overlap,embedding_model,faithfulness,run_id,run_name,chunks_indexed
+256,32,BAAI/bge-m3,1.0,985848824676435eada2889f33b67249,chunk_256_overlap_32,2248
+384,48,BAAI/bge-m3,0.95,aa60728bc3014a778f3c86ee4fac7e2a,chunk_384_overlap_48,1681
+512,64,BAAI/bge-m3,0.95,239e87d9f7cc452bbaec300861e12a83,chunk_512_overlap_64,1408
+512,0,BAAI/bge-m3,1.0,4266a5b7f16849f8b10491c109b08b19,chunk_512_overlap_0,1399
+256,64,BAAI/bge-m3,1.0,0c24940ca2d7452abba347df8d589d0f,chunk_256_overlap_64,2365
