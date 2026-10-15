@@ -83,7 +83,7 @@ class LegalRAGService:
         return AskResponse(
             answer=result["answer"], 
             sources=result["sources"],
-            retrieved_contexts=result["retrieved_contexts"]
+            
         )
 
     @bentoml.api
