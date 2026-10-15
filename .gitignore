@@ -226,4 +226,3 @@ reports/locust_report.html
 mlflow.db
 mlruns/
 .mlflow_chunking_qdrant/
-*.lock
