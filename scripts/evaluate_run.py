@@ -3,13 +3,14 @@
 import json
 import math
 import os
-from datetime import datetime, timezone
-from pathlib import Path
-import requests
 
 # --- FIX FOR UPSTREAM RAGAS VERTEXAI IMPORT BUG ---
 import sys
 import types
+from datetime import datetime, timezone
+from pathlib import Path
+
+import requests
 
 try:
     from langchain_community.chat_models.vertexai import ChatVertexAI  # noqa: F401
