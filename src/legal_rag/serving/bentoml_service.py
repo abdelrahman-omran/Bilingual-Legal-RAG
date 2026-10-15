@@ -25,7 +25,7 @@ from legal_rag.core.rag import LegalRAGPipeline
 class AskResponse(BaseModel):
     answer: str
     sources: list[str]
-
+    retrieved_contexts: list[dict[str, Any]] = Field(default_factory=list)
 
 def _default_qdrant_path() -> str:
     """Resolve the Qdrant dir both in a repo checkout and inside a built Bento."""
@@ -80,7 +80,11 @@ class LegalRAGService:
         self, question: Annotated[str, Field(min_length=1)]
     ) -> AskResponse:
         result = self.pipeline.answer(question, top_k=3)
-        return AskResponse(answer=result["answer"], sources=result["sources"])
+        return AskResponse(
+            answer=result["answer"], 
+            sources=result["sources"],
+            retrieved_contexts=result["retrieved_contexts"]
+        )
 
     @bentoml.api
     async def ask_stream(
