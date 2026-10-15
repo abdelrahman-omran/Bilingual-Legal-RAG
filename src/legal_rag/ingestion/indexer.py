@@ -120,7 +120,7 @@ class CorpusIndexer:
         with json_path.open("r", encoding="utf-8") as file:
             corpus = json.load(file)
         if not isinstance(corpus, list):
-            raise ValueError(
+            raise TypeError(
                 f"Expected {json_path} to contain a JSON list of article records; "
                 f"got {type(corpus).__name__}."
             )

@@ -2,7 +2,6 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from legal_rag.core.rag import LegalRAGPipeline
 
 @pytest.fixture(autouse=True)
 def mock_heavy_models():

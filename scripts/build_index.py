@@ -16,7 +16,7 @@ def _load_config(config_path: Path | None) -> dict[str, Any]:
         raise FileNotFoundError(f"Chunking config not found: {config_path}")
     config = json.loads(config_path.read_text(encoding="utf-8"))
     if not isinstance(config, dict):
-        raise ValueError(f"Expected a JSON object in {config_path}")
+        raise TypeError(f"Expected a JSON object in {config_path}")
     return config
 
 

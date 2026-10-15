@@ -21,10 +21,10 @@ QDRANT_URL = os.getenv("MLFLOW_EXPERIMENT_QDRANT_URL", os.getenv("QDRANT_URL", "
 os.environ["QDRANT_URL"] = QDRANT_URL
 
 import mlflow
+from mlflow.exceptions import MlflowException
 from mlflow.tracking import MlflowClient
 from openai import OpenAI
 from qdrant_client import QdrantClient
-from sentence_transformers import SentenceTransformer
 
 from legal_rag.core.llm_backends import build_backend_from_env
 from legal_rag.core.rag import pipeline as rag
@@ -149,7 +149,7 @@ def register_best(config, best_run_id):
         raise RuntimeError(f"Could not find registered version for {REGISTRY_NAME}")
     try:
         client.set_registered_model_alias(REGISTRY_NAME, "best", version.version)
-    except Exception as exc:
+    except MlflowException as exc: 
         print(f"Model version {version.version} registered; alias was not set: {exc}")
     print(f"Registered {REGISTRY_NAME} version {version.version}")
 
@@ -226,7 +226,6 @@ def main():
     register_best(best_config, best["run_id"])
     print(f"\nBest config: {best_config}")
     print(f"Comparison CSV: {results_path}")
-    print("Take a screenshot of the MLflow comparison UI and save it as reports/mlflow_chunking_experiment.png")
 
 
 if __name__ == "__main__":
