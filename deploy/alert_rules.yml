@@ -1,12 +1,22 @@
+
 groups:
   - name: rag
     rules:
       - alert: FaithfulnessBelowThreshold
-        expr: ragas_faithfulness < 0.80
+        expr: |
+          (ragas_faithfulness{job="bentoml"} < 0.80)
+          and (ragas_faithfulness_available{job="bentoml"} == 1)
         for: 0m
+        labels:
+          severity: warning
         annotations:
           summary: "RAGAS faithfulness {{ $value }} dropped below 0.80"
+          description: "The latest successfully calculated faithfulness score is below the required threshold."
 
       - alert: LLMDown
         expr: up{job="llama"} == 0
         for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "LLM server is down"
