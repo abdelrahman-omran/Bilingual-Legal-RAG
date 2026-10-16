@@ -1,5 +1,4 @@
 # Bilingual Legal RAG — Egyptian Civil Code
-# NOTE: the system is STILL under testing, some bugs might appear, I don't prefer you to test before I remove this note, contact me if you have any questions
 A retrieval-augmented generation system that answers Arabic and English questions
 about the **Egyptian Civil Code (Law no. 131 of 1948)** with **article-level
 citations**. Final project for the MLOps Practitioner course (LLM/RAG track).
@@ -42,22 +41,169 @@ curl localhost:8000/health
 
 ## First-time setup for local development
 
-If you want to run the pipeline outside Docker Compose, install the development
-dependencies and fetch the model/data first:
+Use one of the following options to create the Python environment.
+
+### Option 1: Create a virtual environment and install the project
+
+```bash
+uv venv --seed
+source .venv/bin/activate
+python -m pip install -e .
+```
+
+### Option 2: Use `uv sync`
 
 ```bash
 uv sync
-python scripts/download_model.py       # fetch Qwen2.5-1.5B-Instruct GGUF (~1 GB)
-dvc pull                               # fetch tracked data (PDF + corpus.json)
+source .venv/bin/activate
 ```
 
-## Usage
-Run these commands at first
+Both options can work. `uv sync` is recommended when you want the environment
+recreated from the project's `uv.lock` file. The virtual-environment option
+installs the project and its default dependencies; install any optional groups
+separately if you need them.
+
+### Produce the corpus and build the Qdrant index
+
+Start Qdrant, then run the DVC pipeline:
+
 ```bash
-LLM_BACKEND=llamacpp \
-LLM_BASE_URL=http://localhost:8080/v1 \
-QDRANT_URL=http://localhost:6333 \
-LANGFUSE_HOST=http://localhost:3001 \
+docker compose up -d qdrant
+export QDRANT_URL=http://localhost:6333
+dvc repro
+```
+
+The first indexing run downloads the `BAAI/bge-m3` embedding model. It is cached
+locally, so it normally does not need to be downloaded again on later runs.
+Make sure Qdrant is running before `dvc repro` starts the indexing stage.
+
+### Choose an LLM serving method
+
+Choose one of the three backends below. The Hugging Face `transformers` backend
+is the default when you do not select `llamacpp` or `vllm`, but the examples set
+`LLM_BACKEND` explicitly so the selected backend is clear.
+
+### Option 1: Local llama.cpp — Qwen2.5-1.5B-Instruct-GGUF
+
+Download the GGUF model, then start the `llm` service:
+
+```bash
+python scripts/download_model.py
+docker compose up -d llm
+```
+
+Configure BentoML to use the local llama.cpp OpenAI-compatible endpoint:
+
+```bash
+export LLM_BACKEND=llamacpp
+export LLM_BASE_URL=http://localhost:8080/v1
+export QDRANT_URL=http://localhost:6333
+
+# Inspect the model exposed by llama.cpp
+curl -s http://localhost:8080/v1/models
+
+# Start BentoML
+bentoml serve legal_rag.serving.bentoml_service:LegalRAGService
+```
+
+### Option 2: Hugging Face Transformers — Qwen2.5-1.5B-Instruct
+
+This runs the model locally through Hugging Face Transformers. The model is
+downloaded from Hugging Face the first time it is needed.
+
+```bash
+source .venv/bin/activate
+
+export QDRANT_URL=http://localhost:6333
+export LLM_BACKEND=transformers
+export LLM_MODEL_NAME=Qwen/Qwen2.5-1.5B-Instruct
+unset LLM_BASE_URL
+unset LLM_API_KEY
+
+bentoml serve legal_rag.serving.bentoml_service:LegalRAGService --host 0.0.0.0 --port 3000
+```
+
+### Option 3: vLLM on Colab — `qwen2.5-3b-awq`
+
+The `qwen2.5-3b-awq` model was quantized on Colab. Start the vLLM server by
+running the notebook at `notebooks/vllm_serving/vLLM_ngrok_HF.ipynb` in Colab.
+Copy the current ngrok URL and API key from that setup into the environment
+variables below. Qdrant still needs to be running locally.
+
+```bash
+export QDRANT_URL=http://localhost:6333
+export LLM_BACKEND=vllm
+export LLM_BASE_URL=https://YOUR-CURRENT-NGROK-HOST.ngrok-free.app/v1
+export LLM_MODEL_NAME=qwen2.5-3b-awq
+export LLM_API_KEY=YOUR_VLLM_API_KEY
+
+bentoml serve legal_rag.serving.bentoml_service:LegalRAGService --host 0.0.0.0 --port 3000
+```
+
+Replace the ngrok URL and API key placeholders with the current values from your
+Colab session; the ngrok URL may change between sessions.
+
+### Monitoring and observability
+
+Start the Docker Compose services that you want to use. For the full set of
+services defined in the Compose configuration, run:
+
+```bash
+docker compose up -d
+```
+
+### Langfuse
+
+Create or obtain the keys for your Langfuse project, then export the real values
+(the examples below are placeholders, not working credentials):
+
+```bash
+export LANGFUSE_PUBLIC_KEY=pk-lf-YOUR_PUBLIC_KEY
+export LANGFUSE_SECRET_KEY=sk-lf-YOUR_SECRET_KEY
+export LANGFUSE_HOST=http://localhost:3001
+```
+
+Open [http://localhost:3001](http://localhost:3001) to access Langfuse.
+
+### Prometheus, Alertmanager, and Grafana
+
+After the relevant Compose services are running, open:
+
+- Prometheus: [http://localhost:9090](http://localhost:9090)
+- Alertmanager: [http://localhost:9093](http://localhost:9093)
+- Grafana: [http://localhost:3002](http://localhost:3002)
+
+### Experiments and RAGAS faithfulness
+
+### MLflow
+
+Start the MLflow UI with the local SQLite tracking database:
+
+```bash
+mlflow ui --backend-store-uri sqlite:///mlflow.db   # http://localhost:5000
+```
+
+### Enable RAGAS faithfulness calculations for each question
+
+Set these variables before starting the BentoML service:
+
+```bash
+export RAGAS_ENABLED=true
+export FAITHFULNESS_JUDGE_BASE_URL=http://localhost:8080/v1
+export RAGAS_TIMEOUT_SECONDS=300
+export RAGAS_MAX_CONTEXT_CHARS=2400
+export MLFLOW_TRACKING_URI=sqlite:///mlflow.db
+export RAGAS_MLFLOW_EXPERIMENT=ragas_evaluation
+```
+
+`FAITHFULNESS_JUDGE_BASE_URL` points to the local llama.cpp endpoint in this
+example. If you use a different OpenAI-compatible endpoint for the judge model,
+set it to that endpoint instead. Start MLflow separately with the command above
+when you want to inspect the recorded runs.
+
+## Usage
+start the BentoML serve
+```bash
 bentoml serve legal_rag.serving.bentoml_service:LegalRAGService
 ```
 
