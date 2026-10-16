@@ -12,8 +12,8 @@ import os
 import sys
 import threading
 import types
-from concurrent.futures import ThreadPoolExecutor
 from collections.abc import Iterator
+from concurrent.futures import ThreadPoolExecutor
 from typing import Any
 
 from langfuse.decorators import langfuse_context, observe
@@ -199,8 +199,7 @@ def _calculate_ragas_faithfulness(
 
     # Ragas' synchronous evaluate() uses asyncio internally. Isolating it in a
     # worker thread avoids patching the serving server's active event loop.
-    with _RAGAS_LOCK:
-        with ThreadPoolExecutor(max_workers=1, thread_name_prefix="ragas-faithfulness") as pool:
+    with _RAGAS_LOCK, ThreadPoolExecutor(max_workers=1, thread_name_prefix="ragas-faithfulness") as pool:
             future = pool.submit(
                 evaluate,
                 dataset,

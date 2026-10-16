@@ -1,52 +1,89 @@
+
 {
   "title": "Legal RAG",
   "uid": "legal-rag",
   "schemaVersion": 39,
-  "version": 2,
+  "version": 3,
   "refresh": "30s",
-  "time": {"from": "now-6h", "to": "now"},
+  "time": {
+    "from": "now-6h",
+    "to": "now"
+  },
   "panels": [
     {
-      "id": 1, 
-      "title": "RAGAS Faithfulness", 
+      "id": 1,
+      "title": "RAGAS Faithfulness",
       "type": "timeseries",
-      "gridPos": {"h": 8, "w": 12, "x": 0, "y": 0},
-      "targets": [{"expr": "ragas_faithfulness", "refId": "A"}],
-      "fieldConfig": {"defaults": {"unit": "none", "min": 0, "max": 1}, "overrides": []}
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 0
+      },
+      "targets": [
+        {
+          "expr": "ragas_faithfulness{job=\"bentoml\"}",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none",
+          "min": 0,
+          "max": 1
+        },
+        "overrides": []
+      }
     },
     {
-      "id": 2, 
-      "title": "LLM Server Up", 
+      "id": 2,
+      "title": "LLM Server Up",
       "type": "stat",
-      "gridPos": {"h": 8, "w": 12, "x": 12, "y": 0},
-      "targets": [{"expr": "up{job=\"llama\"}", "refId": "A"}]
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 0
+      },
+      "targets": [
+        {
+          "expr": "up{job=\"llama\"}",
+          "refId": "A"
+        }
+      ]
     },
     {
       "id": 3,
       "title": "RAG API Latency Percentiles (p50, p90, p95)",
       "type": "timeseries",
-      "gridPos": {"h": 8, "w": 24, "x": 0, "y": 8},
+      "gridPos": {
+        "h": 8,
+        "w": 24,
+        "x": 0,
+        "y": 8
+      },
       "targets": [
         {
-          "expr": "histogram_quantile(0.50, sum(rate(bentoml_service_request_duration_seconds_bucket[5m])) by (le))", 
-          "refId": "A", 
+          "expr": "histogram_quantile(0.50, sum by (le) (rate(bentoml_service_request_duration_seconds_bucket{job=\"bentoml\"}[5m])))",
+          "refId": "A",
           "legendFormat": "p50"
         },
         {
-          "expr": "histogram_quantile(0.90, sum(rate(bentoml_service_request_duration_seconds_bucket[5m])) by (le))", 
-          "refId": "B", 
+          "expr": "histogram_quantile(0.90, sum by (le) (rate(bentoml_service_request_duration_seconds_bucket{job=\"bentoml\"}[5m])))",
+          "refId": "B",
           "legendFormat": "p90"
         },
         {
-          "expr": "histogram_quantile(0.95, sum(rate(bentoml_service_request_duration_seconds_bucket[5m])) by (le))", 
-          "refId": "C", 
+          "expr": "histogram_quantile(0.95, sum by (le) (rate(bentoml_service_request_duration_seconds_bucket{job=\"bentoml\"}[5m])))",
+          "refId": "C",
           "legendFormat": "p95"
         }
       ],
       "fieldConfig": {
         "defaults": {
           "unit": "s"
-        }
+        },
+        "overrides": []
       }
     }
   ]

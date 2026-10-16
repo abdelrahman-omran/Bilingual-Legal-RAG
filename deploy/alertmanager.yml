@@ -1,6 +1,9 @@
+
 route:
   receiver: ntfy
+
 receivers:
   - name: ntfy
     webhook_configs:
-      - url: "https://ntfy.sh/legal-rag-alerts"
+      - url: "https://ntfy.sh/legal-rag-alerts?template=alertmanager"
+        send_resolved: true
