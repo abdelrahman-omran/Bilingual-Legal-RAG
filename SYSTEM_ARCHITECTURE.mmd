@@ -1,0 +1,50 @@
+flowchart TB
+  subgraph DATA["1. Data preparation and indexing · DVC"]
+    PDF["Egyptian Civil Code PDF"] --> EXTRACT["scripts/extract_corpus.py"]
+    EXTRACT --> CORPUS["corpus.json · article-level bilingual records"]
+    CORPUS --> INDEX["scripts/build_index.py"]
+    INDEX --> EMBED["BAAI/bge-m3 · article embeddings"]
+  end
+
+  QDRANT[("Qdrant Server<br/>collection: egyptian_civil_code<br/>article vectors + payloads")]
+  EMBED -->|"upsert vectors"| QDRANT
+
+  subgraph SERVE["2. Online question answering"]
+    USER["User / client<br/>Arabic or English question"] --> API["FastAPI<br/>POST /ask · GET /health<br/>port 8000"]
+    USER --> BENTO["BentoML<br/>LegalRAGService<br/>/ask · /ask_stream · port 3000"]
+    API --> RAG["LegalRAGPipeline<br/>query embedding · retrieval orchestration"]
+    BENTO --> RAG
+    RAG -->|"query vector"| QDRANT
+    QDRANT -->|"top-3 article records"| PROMPT["Question + retrieved context<br/>Build generation prompt"]
+    PROMPT --> SELECT{"LLM_BACKEND"}
+    SELECT -->|"llamacpp"| LLAMA["llama.cpp · local<br/>Qwen2.5-1.5B-Instruct GGUF"]
+    SELECT -->|"vllm"| VLLM["vLLM · remote Colab/ngrok<br/>quantized qwen2.5-3b-awq"]
+    SELECT -->|"transformers / unset"| HF["Hugging Face Transformers<br/>Qwen2.5-1.5B-Instruct"]
+    LLAMA --> RESPONSE["JSON response<br/>answer + sources (article citations)"]
+    VLLM --> RESPONSE
+    HF --> RESPONSE
+    RESPONSE -. "HTTP response" .-> USER
+  end
+
+  subgraph QUALITY["3. Evaluation and observability · optional tooling"]
+    EVALSET["Evaluation question set"] --> RAGAS["scripts/evaluate_ragas.py"]
+    RAGAS --> METRICS["RAGAS metrics<br/>faithfulness · answer relevancy<br/>context precision · context recall"]
+    METRICS --> MLFLOW["MLflow<br/>mean scores + experiment history"]
+    METRICS -->|"per-question faithfulness"| LANGFUSE["Langfuse<br/>request traces + scores"]
+    PROM["Prometheus<br/>metrics collection"] --> GRAFANA["Grafana dashboards"]
+    PROM --> ALERT["Alertmanager"]
+  end
+
+  API -. "metrics, if exposed/configured" .-> PROM
+  RAG -. "traces, when configured" .-> LANGFUSE
+
+  classDef data fill:#edf4ff,stroke:#86a8d8,color:#17365d;
+  classDef runtime fill:#eef7ff,stroke:#82b6df,color:#153d5b;
+  classDef db fill:#e8f7ef,stroke:#72b59a,color:#174f3d;
+  classDef model fill:#f8f0fc,stroke:#bd91d9,color:#552a70;
+  classDef ops fill:#fff7e8,stroke:#dfb66e,color:#70490e;
+  class PDF,EXTRACT,CORPUS,INDEX,EMBED data;
+  class USER,API,BENTO,RAG,PROMPT,SELECT,RESPONSE runtime;
+  class QDRANT db;
+  class LLAMA,VLLM,HF model;
+  class EVALSET,RAGAS,METRICS,MLFLOW,LANGFUSE,PROM,GRAFANA,ALERT ops;
