@@ -286,20 +286,13 @@ An empty question is rejected with `422` (input validation, covered by tests).
 ├── reports/             # Locust load-test report
 └── dvc.yaml              # reproducible corpus pipeline
 ```
+## System Architecture
 
-## Data versioning & reproducibility (DVC)
+![system architecture](assets/system_architecture.png)
 
-The source PDF and the derived `corpus.json` are DVC-tracked. The full pipeline
-reproduces with:
+**Notes:** FastAPI and BentoML are separate serving interfaces that route requests through the RAG pipeline. `QDRANT_URL` must target the same Qdrant instance for indexing and runtime retrieval. The embedding model may download on first use if it is not cached. The LLM backend is selected through `LLM_BACKEND`; the code defaults to Transformers when that variable is unset.
 
-```bash
-dvc pull && dvc repro   # PDF → corpus.json → validated, citable articles
-```
-
-Batch updates to a live index go through `scripts/reindex.py`, which upserts new
-or updated articles **without rebuilding the collection** (tested with a new
-document; `documents_indexed` increments accordingly).
-
+For the editable diagram source, see [`SYSTEM_ARCHITECTURE.mmd`](SYSTEM_ARCHITECTURE.mmd).
 ## Experiment tracking (MLflow)
 
 `scripts/run_experiments.py` logs chunking/indexing configurations (embedding
