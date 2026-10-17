@@ -33,9 +33,11 @@ docker compose up --build -d
 ```
 
 **3. test connection health**
+After it was reviewed, this command will give an error, unless the `dvc repro` run first, since `health/` relies on `documents_indexed` which needs the data to already indexed by `dvc repro`
+I would suggest you to follow the **First-time setup for local development** from here, then you will be able to run this command after following the setup 
 
 ```bash
-curl localhost:8000/health
+#curl localhost:8000/health
 ```
 
 
@@ -183,10 +185,17 @@ Start the MLflow UI with the local SQLite tracking database:
 mlflow ui --backend-store-uri sqlite:///mlflow.db   # http://localhost:5000
 ```
 
-### Enable RAGAS faithfulness calculations for each question
+### Enable Real-Time RAGAS Evaluation
+By default, request-level evaluations are disabled to maintain low latency. You can optionally enable **RAGAS Faithfulness Scoring** to automatically judge response quality and log evaluation metrics to MLflow on every incoming request.
 
-Set these variables before starting the BentoML service:
+#### When to Enable This:
+* **Development & Auditing**: To track answer grounding and hallucination metrics in real time.
+* **Experimentation**: To log detailed evaluation runs to your local MLflow tracking database.
 
+> **Note**: Running RAGAS evaluations during active requests introduces additional processing latency and requires an accessible judge LLM endpoint.
+
+#### Configuration Variables
+Set the following environment variables before launching the BentoML service:
 ```bash
 export RAGAS_ENABLED=true
 export FAITHFULNESS_JUDGE_BASE_URL=http://localhost:8080/v1
@@ -259,19 +268,6 @@ An empty question is rejected with `422` (input validation, covered by tests).
    Qdrant, and a strict prompt (cite articles or admit the answer is not found)
    is sent to the LLM. Retrieval, prompt formatting, and generation are separated
    behind a backend interface (`src/legal_rag/core/llm_backends.py`).
-
-## LLM serving: llama.cpp instead of vLLM
-
-The generative model is **Qwen/Qwen2.5-1.5B-Instruct** served by a
-**llama.cpp server** (`llm` container) running the `q4_k_m` GGUF — an
-instructor-approved choice for this CPU-only project. vLLM is CUDA-first and
-impractical on this hardware; llama.cpp provides an OpenAI-compatible API with
-native token streaming at interactive speed on CPU. The backend is swappable via
-`LLM_BACKEND=transformers|llamacpp`, and a local Hugging Face `transformers`
-fallback is included for offline development and CI.
-
-Model name: `Qwen/Qwen2.5-1.5B-Instruct-GGUF` (`qwen2.5-1.5b-instruct-q4_k_m.gguf`,
-downloaded by `scripts/download_model.py`).
 
 ## Repository layout
 
@@ -353,7 +349,7 @@ queued server-side; on CPU, latency is dominated by token generation.)
 
 ## Canary rollout
 
-`docker-compose.canary.yaml` + `deploy/nginx.canary.conf` split traffic ~90/10
+`docker-compose.canary.yaml` + `deploy/nginx.canary.conf` split traffic ~95/5
 between `legal-rag-bento:stable` and `legal-rag-bento:canary`. The
 `X-Served-By` response header reveals which backend served a request, so the
 split is verifiable with a simple curl loop. Rollback is immediate (stopping the
