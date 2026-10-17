@@ -220,7 +220,6 @@ __marimo__/
 # Streamlit
 .streamlit/secrets.toml
 models/
-reports/locust_report.html
 
 # MLflow & Experiment Caches
 mlflow.db

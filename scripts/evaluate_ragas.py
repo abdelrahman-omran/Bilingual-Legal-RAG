@@ -37,7 +37,7 @@ from ragas.run_config import RunConfig
 from legal_rag.core.llm_backends import build_backend_from_env
 from legal_rag.core.rag import LegalRAGPipeline
 
-EVAL_PATH = Path("tests/eval/eval_4_questions.json")
+EVAL_PATH = Path("tests/eval/eval_20_questions.json")
 
 
 def main() -> None:

@@ -1,3 +1,4 @@
+import random
 from locust import HttpUser, between, task
 
 QUESTIONS = [
@@ -8,11 +9,17 @@ QUESTIONS = [
 
 
 class RAGUser(HttpUser):
-    wait_time = between(0.5, 2)
+    # Simulates realistic user pause between requests (0.5s - 2s)
+    wait_time = between(0.5, 2.0)
 
     @task
     def ask(self):
-        self.client.post("/ask", json={"question": self.question})
-
-    def on_start(self):
-        self.question = QUESTIONS[self.environment.runner.user_count % len(QUESTIONS)]
+        # Pick a random question for every request to test search/cache variance
+        question = random.choice(QUESTIONS)
+        
+        self.client.post(
+            "/ask",
+            json={"question": question},
+            headers={"Content-Type": "application/json"},
+            name="/ask"  # Groups metrics under a clean endpoint name in Locust UI
+        )
