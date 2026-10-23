@@ -388,4 +388,3 @@ Answer:"""
             yield {"type": "faithfulness", **evaluation}
 
 
-pipeline = LegalRAGPipeline()

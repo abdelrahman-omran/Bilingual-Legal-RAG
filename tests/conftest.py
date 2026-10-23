@@ -11,7 +11,8 @@ def mock_heavy_models():
     """
     with (
         patch("legal_rag.core.rag.SentenceTransformer") as mock_transformer,
-        patch("legal_rag.core.rag.pipeline") as mock_pipeline,
+        patch("transformers.pipeline") as mock_pipeline,
+
         patch("legal_rag.core.rag.QdrantClient") as mock_qdrant,
     ):
         # Configure mock encoder return shapes

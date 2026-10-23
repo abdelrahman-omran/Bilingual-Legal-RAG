@@ -226,7 +226,7 @@ def main() -> int:
     args = parse_args()
     try:
         transfer_collection(args)
-    except Exception as exc:
+    except Exception as exc: # noqa: BLE001 — CLI boundary for clear error reporting
         print(f"ERROR: {exc}", file=sys.stderr)
         return 1
     return 0
