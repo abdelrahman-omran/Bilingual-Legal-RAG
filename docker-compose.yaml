@@ -26,25 +26,23 @@ services:
       dockerfile: Dockerfile
     container_name: legal_rag_api
     depends_on:
-      - llm
-      - qdrant
+      qdrant:
+        condition: service_started
+      index-importer:
+        condition: service_completed_successfully
     ports:
       - "8000:8000"
     environment:
-      - LLM_BACKEND=llamacpp
-      - LLM_BASE_URL=http://llm:8080/v1
-      - LLM_MODEL_NAME=Qwen/Qwen2.5-1.5B-Instruct
-
-      # Qdrant server inside Docker
-      - QDRANT_URL=http://qdrant:6333
-
+      LLM_BACKEND: ${LLM_BACKEND:-transformers}
+      LLM_MODEL_NAME: ${LLM_MODEL_NAME:-Qwen/Qwen2.5-1.5B-Instruct}
+      LLM_BASE_URL: http://llm:8080/v1
+      QDRANT_URL: http://qdrant:6333
       # Persistent Hugging Face / Sentence Transformers cache
-      - HF_HOME=/model-cache/huggingface
-      - SENTENCE_TRANSFORMERS_HOME=/model-cache/sentence-transformers
+      HF_HOME: /model-cache/huggingface
+      SENTENCE_TRANSFORMERS_HOME: /model-cache/sentence-transformers
     volumes:
       - hf_model_cache:/model-cache
     restart: unless-stopped
-# docker-compose.yaml additions
   langfuse-db:
     image: postgres:15-alpine
     environment:
@@ -102,7 +100,34 @@ services:
     volumes:
       - grafana_data:/var/lib/grafana
       - ./deploy/grafana/provisioning:/etc/grafana/provisioning:ro
+  index-importer:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: legal_rag_index_importer
+    depends_on:
+      qdrant:
+        condition: service_started
+    volumes:
+      - ./data/qdrant_db:/source/qdrant_db
+    restart: "no"
+    command:
+      - sh
+      - -ec
+      - |
+        echo "Waiting for Qdrant Server..."
+        until python -c 'from qdrant_client import QdrantClient; QdrantClient(url="http://qdrant:6333").get_collections()' >/dev/null 2>&1; do
+          sleep 2
+        done
 
+        if python -c 'import sys; from qdrant_client import QdrantClient; c=QdrantClient(url="http://qdrant:6333"); sys.exit(0 if c.collection_exists("egyptian_civil_code") else 1)'; then
+          echo "Collection already exists; skipping import."
+        else
+          python scripts/import_local_index_to_qdrant.py \
+            --local-db-path /source/qdrant_db \
+            --qdrant-url http://qdrant:6333 \
+            --collection egyptian_civil_code
+        fi
 volumes:
   langfuse_pg:
   grafana_data:

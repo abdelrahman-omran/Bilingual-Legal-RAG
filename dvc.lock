@@ -40,6 +40,6 @@ stages:
     outs:
     - path: data/qdrant_db
       hash: md5
-      md5: 6c5428b8f6180e0141ea9032004d0d1b.dir
-      size: 7
-      nfiles: 1
+      md5: 1738bd59bb88735cbfb453c500e2a1a0.dir
+      size: 13898301
+      nfiles: 4
