@@ -240,7 +240,10 @@ class LegalRAGPipeline:
             if llm_backend is not None
             else build_backend_from_env(default_model=llm_model_name)
         )
-        print(f"Selected LLM backend: {type(self.llm_backend).__name__}")
+        print(
+            f"Selected LLM backend: "
+            f"{os.getenv('LLM_BACKEND', 'transformers').strip().lower()}"
+        )
 
     @observe(name="retrieve")
     def retrieve(self, query: str, top_k: int = 3) -> list[dict[str, Any]]:
