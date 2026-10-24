@@ -99,7 +99,11 @@ class CorpusIndexer:
         self.overlap = overlap
         # Optional injection lets a benchmark share the same encoder for indexing
         # and query embedding, and avoids repeatedly loading the same model.
-        self.encoder = encoder or SentenceTransformer(model_name, device="cpu")
+        self.encoder = encoder or SentenceTransformer(
+            model_name,
+            device="cpu",
+            model_kwargs={"use_safetensors": True},
+        )
         self.vector_size = self.encoder.get_sentence_embedding_dimension()
         self.client = _make_qdrant_client(db_path)
 

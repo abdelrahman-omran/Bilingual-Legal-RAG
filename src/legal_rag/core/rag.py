@@ -229,14 +229,21 @@ class LegalRAGPipeline:
     ):
         self.collection_name = collection_name
         self.embedding_model = embedding_model
-        self.encoder = SentenceTransformer(embedding_model, device="cpu")
+        self.encoder = SentenceTransformer(
+            embedding_model,
+            device="cpu",
+            model_kwargs={"use_safetensors": True},
+        )
         self.qdrant_client = _make_qdrant_client(qdrant_path)
         self.llm_backend = (
             llm_backend
             if llm_backend is not None
             else build_backend_from_env(default_model=llm_model_name)
         )
-        print(f"Selected LLM backend: {type(self.llm_backend).__name__}")
+        print(
+            f"Selected LLM backend: "
+            f"{os.getenv('LLM_BACKEND', 'transformers').strip().lower()}"
+        )
 
     @observe(name="retrieve")
     def retrieve(self, query: str, top_k: int = 3) -> list[dict[str, Any]]:
@@ -388,4 +395,3 @@ Answer:"""
             yield {"type": "faithfulness", **evaluation}
 
 
-pipeline = LegalRAGPipeline()

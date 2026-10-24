@@ -15,75 +15,119 @@ returns `sources` as article citations (e.g. `Egyptian Civil Code, Article 147`)
 the code itself. Repealed articles (54–80) are flagged in the corpus, not
 silently deleted: *"that article no longer exists"* is a valid, verifiable answer.
 
-## Quickstart (3 commands)
+# Quickstart
 
-Run these three steps from a terminal. Replace `OWNER/REPOSITORY` with the actual
-GitHub owner and repository name.
+## Clone the repository
 
-**1. Clone the repository**
-
-```bash
-git clone https://github.com/abdelrahman-omran/Bilingual-Legal-RAG.git && cd Bilingual-Legal-RAG
-```
-
-**2. Start the services with Docker Compose**
+This is the initial step for a fresh machine.
 
 ```bash
-docker compose up --build -d
+git clone https://github.com/abdelrahman-omran/Bilingual-Legal-RAG.git
+cd Bilingual-Legal-RAG
 ```
 
-**3. test connection health**
-After it was reviewed, this command will give an error, unless the `dvc repro` run first, since `health/` relies on `documents_indexed` which needs the data to already indexed by `dvc repro`
-I would suggest you to follow the **First-time setup for local development** from here, then you will be able to run this command after following the setup 
+## Set up the system  "3 commands to run on any machine" 
 
-```bash
-#curl localhost:8000/health
-```
+Choose **one** of the following options to prepare the data and start the system.
 
+### Option 1: Build the corpus and index from scratch (`dvc repro`)
 
-## First-time setup for local development
+Use this option when you want to reproduce the data-processing and indexing pipeline yourself.
 
-Use one of the following options to create the Python environment.
-
-### Option 1: Create a virtual environment and install the project
-
-```bash
-uv venv --seed
-source .venv/bin/activate
-python -m pip install -e .
-```
-
-### Option 2: Use `uv sync`
+First, install the project dependencies and activate the virtual environment:
 
 ```bash
 uv sync
 source .venv/bin/activate
 ```
 
-Both options can work. `uv sync` is recommended when you want the environment
-recreated from the project's `uv.lock` file. The virtual-environment option
-installs the project and its default dependencies; install any optional groups
-separately if you need them.
-
-### Produce the corpus and build the Qdrant index
-
-Start Qdrant, then run the DVC pipeline:
+Run the DVC pipeline:
 
 ```bash
-docker compose up -d qdrant
-export QDRANT_URL=http://localhost:6333
 dvc repro
 ```
 
-The first indexing run downloads the `BAAI/bge-m3` embedding model. It is cached
-locally, so it normally does not need to be downloaded again on later runs.
-Make sure Qdrant is running before `dvc repro` starts the indexing stage.
+**Note:** On the first run, `dvc repro` downloads the `BAAI/bge-m3` embedding model (approximately **2.27 GB**) to generate embeddings and build the Qdrant index. The model is cached locally for subsequent runs.
 
-### Choose an LLM serving method
+Start the application and supporting services:
+
+```bash
+docker compose up --build -d
+```
+
+The first Docker startup may download the embedding model again because the API uses its own persistent Docker cache volume. Subsequent restarts and image rebuilds normally reuse this volume.
+
+### Option 2: Download the prebuilt data using DVC (`dvc pull`) "Needs Access Token"
+
+Use this option when you want to avoid rebuilding the corpus and index. The prebuilt artifacts are stored on DagsHub, so you need a DagsHub access token with permission to download them.
+
+First, install the project dependencies and activate the virtual environment:
+
+```bash
+uv sync
+source .venv/bin/activate
+```
+
+Configure your DagsHub credentials locally. Run the following commands and paste the access token in the terminal:
+
+```bash
+uv run dvc remote modify --local dagshub-public auth basic
+uv run dvc remote modify --local dagshub-public user 11abdelrahmanhamdy11
+
+read -rsp "DagsHub token: " DAGSHUB_TOKEN
+echo
+uv run dvc remote modify --local dagshub-public password "$DAGSHUB_TOKEN"
+uv run dvc remote modify --local dagshub-public ask_password false
+unset DAGSHUB_TOKEN
+
+uv run dvc pull
+```
+
+This restores the versioned artifacts without running the extraction and indexing pipeline, so you can skip the initial embedding-generation step.
+
+**Important:** The API still needs the `BAAI/bge-m3` embedding model at runtime to turn user questions into vectors for retrieval. 
+
+Start the application and supporting services:
+
+```bash
+docker compose up --build -d
+```
+
+## Check the application health
+
+Once the services have started, check the API:
+
+```bash
+curl http://localhost:8000/health
+```
+
+The health endpoint relies on the indexed data being available. If you choose Option 1, complete `dvc repro` first. If you choose Option 2, make sure `dvc pull` succeeds before starting the application.
+
+You can also test the `/ask` endpoint by running:
+
+```bash
+curl -X POST "http://localhost:8000/ask" \
+  -H "Content-Type: application/json" \
+  -d '{"question": "What does Article 147 say about contracts?"}'
+```
+
+The first question may take a few minutes because the models need to be downloaded and saved in a Docker volume. After that, requests should take only seconds. You may not see the model download logs, so just wait a few minutes for the first answer to arrive.
+
+## Which option should I choose?
+
+- **Option 1 — `dvc repro`:** Best for reproducing the complete data-processing and indexing pipeline.
+- **Option 2 — `dvc pull`:** Best for quickly setting up the application using the prebuilt artifacts. Requires a DagsHub access token.
+
+Both options use the same Docker Compose deployment after the data is ready.
+
+
+## Choose an LLM serving method
 
 Choose one of the three backends below. The Hugging Face `transformers` backend
 is the default when you do not select `llamacpp` or `vllm`, but the examples set
 `LLM_BACKEND` explicitly so the selected backend is clear.
+
+You don't need a fresh setup each time to be able to use each of the 3 models, you can switch between them using the commands below:
 
 ### Option 1: Local llama.cpp — Qwen2.5-1.5B-Instruct-GGUF
 
@@ -103,29 +147,8 @@ export QDRANT_URL=http://localhost:6333
 
 # Inspect the model exposed by llama.cpp
 curl -s http://localhost:8080/v1/models
-
-# Start BentoML
-bentoml serve legal_rag.serving.bentoml_service:LegalRAGService
 ```
-
-### Option 2: Hugging Face Transformers — Qwen2.5-1.5B-Instruct
-
-This runs the model locally through Hugging Face Transformers. The model is
-downloaded from Hugging Face the first time it is needed.
-
-```bash
-source .venv/bin/activate
-
-export QDRANT_URL=http://localhost:6333
-export LLM_BACKEND=transformers
-export LLM_MODEL_NAME=Qwen/Qwen2.5-1.5B-Instruct
-unset LLM_BASE_URL
-unset LLM_API_KEY
-
-bentoml serve legal_rag.serving.bentoml_service:LegalRAGService --host 0.0.0.0 --port 3000
-```
-
-### Option 3: vLLM on Colab — `qwen2.5-3b-awq`
+### Option 2: vLLM on Colab — `qwen2.5-3b-awq`
 
 The `qwen2.5-3b-awq` model was quantized on Colab. Start the vLLM server by
 running the notebook at `notebooks/vllm_serving/vLLM_ngrok_HF.ipynb` in Colab.
@@ -138,12 +161,28 @@ export LLM_BACKEND=vllm
 export LLM_BASE_URL=https://YOUR-CURRENT-NGROK-HOST.ngrok-free.app/v1
 export LLM_MODEL_NAME=qwen2.5-3b-awq
 export LLM_API_KEY=YOUR_VLLM_API_KEY
-
-bentoml serve legal_rag.serving.bentoml_service:LegalRAGService --host 0.0.0.0 --port 3000
 ```
 
 Replace the ngrok URL and API key placeholders with the current values from your
 Colab session; the ngrok URL may change between sessions.
+
+### Option 3: Hugging Face Transformers — Qwen2.5-1.5B-Instruct (Backup model)
+
+This runs the model locally through Hugging Face Transformers. The model is
+downloaded from Hugging Face the first time it is needed.
+It acts as a backup model if one of the two previous models failed to run
+
+```bash
+source .venv/bin/activate
+
+export QDRANT_URL=http://localhost:6333
+export LLM_BACKEND=transformers
+export LLM_MODEL_NAME=Qwen/Qwen2.5-1.5B-Instruct
+unset LLM_BASE_URL
+unset LLM_API_KEY
+```
+
+
 
 ### Monitoring and observability
 
@@ -197,6 +236,7 @@ By default, request-level evaluations are disabled to maintain low latency. You 
 #### Configuration Variables
 Set the following environment variables before launching the BentoML service:
 ```bash
+docker compose up -d llm
 export RAGAS_ENABLED=true
 export FAITHFULNESS_JUDGE_BASE_URL=http://localhost:8080/v1
 export RAGAS_TIMEOUT_SECONDS=300
@@ -205,15 +245,13 @@ export MLFLOW_TRACKING_URI=sqlite:///mlflow.db
 export RAGAS_MLFLOW_EXPERIMENT=ragas_evaluation
 ```
 
-`FAITHFULNESS_JUDGE_BASE_URL` points to the local llama.cpp endpoint in this
-example. If you use a different OpenAI-compatible endpoint for the judge model,
-set it to that endpoint instead. Start MLflow separately with the command above
-when you want to inspect the recorded runs.
+
+- `FAITHFULNESS_JUDGE_BASE_URL` points to the local llama.cpp endpoint in this example. All three LLM options can retrieve and generate answers, but currently, due to versioning issues with other models, only local llama.cpp can be used as an LLM judge for RAGAS. To use RAGAS, you need to set up llama.cpp as described in **Option 1**. You can still use the other models to generate answers by setting them up after setting up llama.cpp for ragas.
 
 ## Usage
 start the BentoML serve
 ```bash
-bentoml serve legal_rag.serving.bentoml_service:LegalRAGService
+bentoml serve legal_rag.serving.bentoml_service:LegalRAGService --host 0.0.0.0 --port 3000
 ```
 
 For the BentoML service started directly on the host, the non-streaming endpoint
@@ -225,21 +263,6 @@ curl -X POST http://localhost:3000/ask \
   -d '{"question": "What does Article 147 say about contracts?"}'
 ```
 
-Streaming (NDJSON: first line = sources, then one JSON object per token):
-
-```bash
-curl -N -X POST http://localhost:3000/ask_stream \
-  -H 'Content-Type: application/json' \
-  -d '{"question": "ما هي حالات بطلان التصرفات القانونية؟"}'
-```
-
-Health endpoint for the standalone BentoML service:
-
-```bash
-curl http://localhost:3000/health
-# Example: {"status": "healthy", "documents_indexed": 1149}
-```
-
 Response shape:
 
 ```json
@@ -249,7 +272,23 @@ Response shape:
 }
 ```
 
-An empty question is rejected with `422` (input validation, covered by tests).
+Streaming:
+
+```bash
+curl -N -X POST http://localhost:3000/ask_stream \
+  -H 'Content-Type: application/json' \
+  -d '{"question": "What does Article 147 say about contracts?"}'
+```
+
+Health endpoint for the standalone BentoML service:
+
+```bash
+curl -X POST http://localhost:3000/health
+# Example: {"status": "healthy", "documents_indexed": 1149}
+```
+
+
+
 
 ## How it works
 
@@ -311,22 +350,10 @@ runs, so metric trends are visible across sessions.
 | Check | Where | Threshold |
 |---|---|---|
 | Retrieval Hit@3 (20 gold bilingual questions) | `scripts/eval_ci.py` (runs in CI) | ≥ 0.75 — CI fails below |
-| RAGAS faithfulness | `scripts/evaluate_ragas.py` → MLflow | faithfulness alert < 0.80 (`scripts/check_faithfulness_alret.py`) |
+| RAGAS faithfulness | `scripts/evaluate_ragas.py` → MLflow | faithfulness alert for CI < 0.80 (`scripts/check_faithfulness_alret.py`) |
 
-The bilingual eval set doubles as an Arabic-embedding ablation: the same
-question is asked in both languages and retrieval must return the same article.
 
-## Production serving (BentoML) & load testing
-
-The BentoML service wraps the pipeline with async `/ask` and streaming
-`/ask_stream` endpoints:
-
-```bash
-uv build                                  # build the project wheel
-UV_INDEX_STRATEGY=unsafe-best-match \
-bentoml build                              # build the bento
-bentoml containerize legal_rag_service:<tag> --image-tag legal-rag-bento:latest
-```
+## load testing
 
 Load test (50 concurrent users, Locust):
 
@@ -336,7 +363,7 @@ locust -f tests/locustfile.py --host http://localhost:3000 \
   --html reports/locust_report.html
 ```
 
-**p95 latency for `/ask` at 50 concurrent users: see `reports/locust_report.html`.**
+**reports saved in `reports/locust_report.html`.**
 (The llama.cpp server runs with `--parallel` slots so concurrent requests are
 queued server-side; on CPU, latency is dominated by token generation.)
 

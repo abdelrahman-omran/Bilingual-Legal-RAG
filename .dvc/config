@@ -1,0 +1,4 @@
+[core]
+    remote = dagshub-public
+['remote "dagshub-public"']
+    url = https://dagshub.com/11abdelrahmanhamdy11/Bilingual-Legal-RAG.dvc
