@@ -246,7 +246,7 @@ export RAGAS_MLFLOW_EXPERIMENT=ragas_evaluation
 ```
 
 
-- `FAITHFULNESS_JUDGE_BASE_URL` points to the local llama.cpp endpoint in this example. All three LLM options can retrieve and generate answers, but currently, due to versioning issues with other models, only local llama.cpp can be used as an LLM judge for RAGAS. To use RAGAS, you need to set up llama.cpp as described in **Option 1**. You can still use the other models to generate answers.
+- `FAITHFULNESS_JUDGE_BASE_URL` points to the local llama.cpp endpoint in this example. All three LLM options can retrieve and generate answers, but currently, due to versioning issues with other models, only local llama.cpp can be used as an LLM judge for RAGAS. To use RAGAS, you need to set up llama.cpp as described in **Option 1**. You can still use the other models to generate answers by setting them up after setting up llama.cpp for ragas.
 
 ## Usage
 start the BentoML serve
