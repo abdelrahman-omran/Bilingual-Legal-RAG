@@ -100,8 +100,8 @@ Once the services have started, check the API:
 ```bash
 curl http://localhost:8000/health
 ```
+**if you faced a `curl: (56) Recv failure: Connection reset by peer.` error, please check `docker compose logs -f rag-api` some models might still be downloading**
 
-The health endpoint relies on the indexed data being available. If you choose Option 1, complete `dvc repro` first. If you choose Option 2, make sure `dvc pull` succeeds before starting the application.
 
 You can also test the `/ask` endpoint by running:
 
