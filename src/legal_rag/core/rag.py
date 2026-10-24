@@ -229,7 +229,11 @@ class LegalRAGPipeline:
     ):
         self.collection_name = collection_name
         self.embedding_model = embedding_model
-        self.encoder = SentenceTransformer(embedding_model, device="cpu")
+        self.encoder = SentenceTransformer(
+            embedding_model,
+            device="cpu",
+            model_kwargs={"use_safetensors": True},
+        )
         self.qdrant_client = _make_qdrant_client(qdrant_path)
         self.llm_backend = (
             llm_backend
